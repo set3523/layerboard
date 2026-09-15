@@ -1,0 +1,3412 @@
+
+
+====== W:\work\layboad\layboad\src\app\(auth)\login\page.tsx ======
+
+// src/app/(auth)/login/page.tsx
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Mail, Lock, MonitorPlay, ArrowRight, Loader2 } from "lucide-react";
+import Link from "next/link";
+// ??ë°©ê¸ˆ ë§Œë“  ?¸ì¦ ëª¨ë“ˆ ë¶ˆëŸ¬?¤ê¸°!
+import { signInWithEmail, signUpWithEmail, signInWithSocial } from "@/lib/api/auth";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  
+  // ?íƒœ ê´€ë¦?(ë¡œë”© ì¤‘ì¸ì§€, ?ëŸ¬ê°€ ?¬ëŠ”ì§€)
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const translateError = (error: any) => {
+    const msg = error?.message || "";
+    
+    if (msg.includes("rate limit")) return "?”ì²­ ?Ÿìˆ˜ê°€ ?ˆë¬´ ë§ìŠµ?ˆë‹¤. ? ì‹œ ???¤ì‹œ ?œë„??ì£¼ì„¸??";
+    if (msg.includes("already registered")) return "?´ë? ê°€?…ëœ ?´ë©”?¼ì…?ˆë‹¤. ë¡œê·¸?¸ì„ ì§„í–‰??ì£¼ì„¸??";
+    if (msg.includes("Invalid login credentials")) return "?´ë©”???ëŠ” ë¹„ë?ë²ˆí˜¸ê°€ ?¼ì¹˜?˜ì? ?ŠìŠµ?ˆë‹¤.";
+    if (msg.includes("Password should be at least")) return "ë¹„ë?ë²ˆí˜¸??6?ë¦¬ ?´ìƒ?´ì–´???©ë‹ˆ??";
+    if (msg.includes("Email not confirmed")) return "?´ë©”???¸ì¦???„ìš”?©ë‹ˆ??";
+    
+    // ?°ë¦¬ê°€ ?ˆìƒì¹?ëª»í•œ ?ëŸ¬??ê²½ìš°?ë§Œ ?ë˜ ?ì–´ ?ëŸ¬ë¥?ê´„í˜¸???£ì–´??ë³´ì—¬ì¤ë‹ˆ??
+    return `?¤ë¥˜ê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤. ? ì‹œ ???¤ì‹œ ?œë„??ì£¼ì„¸?? (${msg})`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setErrorMessage(""); // ê¸°ì¡´ ?ëŸ¬ ë©”ì‹œì§€ ì´ˆê¸°??
+
+    // ??[?¸ë ¨??ë°©ì–´ë§? ê¸ˆì???ëª©ë¡??ë°°ì—´ë¡?ê´€ë¦¬í•˜ê³? ?œì? ë©˜íŠ¸ë¥??„ì›?ˆë‹¤.
+    const checkEmail = email.toLowerCase();
+    const restrictedWords = ["test", "admin", "example", "demo", "info", "noreply", "fake"];
+    
+    // ?¬ìš©?ê? ?…ë ¥???´ë©”?¼ì— ???¨ì–´ ì¤??˜ë‚˜?¼ë„ ?¬í•¨?˜ì–´ ?ˆë‹¤ë©?
+    if (restrictedWords.some(word => checkEmail.includes(word))) {
+      setIsLoading(false);
+      return setErrorMessage("ë³´ì•ˆ ë°??¤íŒ¸ ë°©ì? ?•ì±…???°ë¼ ê°€?…ì´ ?œí•œ???´ë©”??ì£¼ì†Œ?…ë‹ˆ?? ?¤ì œ ?¬ìš© ì¤‘ì¸ ê°œì¸ ?´ë©”?¼ì„ ?…ë ¥??ì£¼ì„¸??");
+    }
+
+    try {
+      if (isLogin) {
+        await signInWithEmail(email, password);
+      } else {
+        await signUpWithEmail(email, password);
+        alert("?Œì›ê°€???±ê³µ! ë¡œê·¸???”ë©´?¼ë¡œ ?´ë™?©ë‹ˆ??");
+        setIsLogin(true); // ê°€???±ê³µ ??ë¡œê·¸???”ë©´?¼ë¡œ ?„í™˜
+        setIsLoading(false);
+        return;
+      }
+      
+      // ë¡œê·¸???±ê³µ ???€?œë³´?œë¡œ ?´ë™
+      router.push("/dashboard");
+    } catch (error: any) {
+      console.error("?¸ì¦ ?ëŸ¬:", error);
+      // ??ë°”ë¡œ ??ë¶€ë¶? ë¬´ì„œ???ì–´ ?ëŸ¬ ?€??ë²ˆì—­ê¸°ë? ?µê³¼?œí‚¨ ?œêµ­?´ë? ?ëŸ¬ ë©”ì‹œì§€ë¡??¸íŒ…?©ë‹ˆ??
+      setErrorMessage(translateError(error)); 
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (provider: "google" | "kakao") => {
+    try {
+      setErrorMessage("");
+      // ?Œì…œ ë¡œê·¸?¸ì? ?¨ìˆ˜ ?¸ì¶œ ??ë°©ì´ë©?Supabaseê°€ ?Œì•„???˜ì´ì§€ë¥??˜ê²¨ì¤ë‹ˆ??
+      await signInWithSocial(provider);
+    } catch (error: any) {
+      console.error("?Œì…œ ë¡œê·¸???ëŸ¬:", error);
+      setErrorMessage("?Œì…œ ë¡œê·¸??ì¤?ë¬¸ì œê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤.");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans selection:bg-blue-100">
+      
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <Link href="/" className="inline-flex items-center gap-2 font-bold text-3xl tracking-tight text-blue-600 mb-6 transition-transform hover:scale-105">
+          <MonitorPlay size={32} />
+          <span>layboad</span>
+        </Link>
+        <h2 className="text-3xl font-extrabold text-gray-900">
+          {isLogin ? "? ìƒ??ë¡œê·¸?? : "? ìƒ???Œì›ê°€??}
+        </h2>
+        <p className="mt-2 text-sm text-gray-600">
+          {isLogin ? "?„ì§ ê³„ì •???†ìœ¼? ê??? " : "?´ë? ê³„ì •???ˆìœ¼? ê??? "}
+          <button 
+            onClick={() => { setIsLogin(!isLogin); setErrorMessage(""); }} 
+            className="font-bold text-blue-600 hover:text-blue-500 transition-colors"
+          >
+            {isLogin ? "ë¬´ë£Œë¡?ê°€?…í•˜ê¸? : "ë¡œê·¸?¸í•˜ê¸?}
+          </button>
+        </p>
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-white py-8 px-4 shadow-xl shadow-gray-200/50 sm:rounded-3xl sm:px-10 border border-gray-100">
+          
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* ?ëŸ¬ ë©”ì‹œì§€ ?œì‹œ ?ì—­ */}
+            {errorMessage && (
+              <div className="p-3 bg-red-50 text-red-600 text-sm font-bold rounded-xl border border-red-100 text-center animate-in shake">
+                {errorMessage}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700">?´ë©”??ì£¼ì†Œ</label>
+              <div className="mt-2 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-50 focus:bg-white"
+                  placeholder="teacher@example.com"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700">ë¹„ë?ë²ˆí˜¸</label>
+              <div className="mt-2 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-gray-50 focus:bg-white"
+                  placeholder="6?ë¦¬ ?´ìƒ ?…ë ¥?´ì£¼?¸ìš”"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent rounded-xl shadow-md shadow-blue-200 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <>{isLogin ? "ë¡œê·¸?? : "ê°€?…í•˜ê¸?} <ArrowRight size={18} /></>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-8">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-3 bg-white text-gray-500 font-medium">?ëŠ” ?Œì…œ ê³„ì •?¼ë¡œ 1ì´?ë§Œì— ?œì‘?˜ê¸°</span>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleSocialLogin("google")}
+                className="w-full inline-flex justify-center items-center py-3 px-4 border-2 border-gray-100 rounded-xl shadow-sm bg-white text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98]"
+              >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                </svg>
+                Google
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSocialLogin("kakao")}
+                className="w-full inline-flex justify-center items-center py-3 px-4 rounded-xl shadow-sm bg-[#FEE500] hover:bg-[#FDD800] text-sm font-bold text-[#000000] transition-all active:scale-[0.98]"
+              >
+                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 3c-5.523 0-10 3.52-10 7.864 0 2.766 1.776 5.19 4.453 6.474l-1.127 4.195c-.1.373.315.65.653.44l4.9-3.23c.365.05.738.077 1.121.077 5.523 0 10-3.52 10-7.864C22 6.52 17.523 3 12 3z"/>
+                </svg>
+                Kakao
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+====== W:\work\layboad\layboad\src\app\dashboard\page.tsx ======
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { 
+  Plus, LayoutDashboard, BookOpen, CreditCard, Settings, 
+  LogOut, Search, MoreVertical, ExternalLink, Users, Loader2, Trash2 // ??Trash2 ì¶”ê?
+} from "lucide-react";
+import Link from "next/link";
+
+// ???°ë¦¬ê°€ ë§Œë“  ë°±ì—”???µì‹  ëª¨ë“ˆ ë¶ˆëŸ¬?¤ê¸°!
+import { getCurrentUser, signOut } from "@/lib/api/auth";
+import { createRoom, getTeacherRooms, deleteRoom } from "@/lib/api/rooms";
+
+export default function DashboardPage() {
+  const router = useRouter();
+  
+  // ?íƒœ ê´€ë¦?
+  const [userName, setUserName] = useState("? ìƒ??);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [rooms, setRooms] = useState<any[]>([]); // ì§„ì§œ DB ë°?ëª©ë¡
+  const [isLoading, setIsLoading] = useState(true); // ìµœì´ˆ ë¡œë”© ?íƒœ
+  const [isCreating, setIsCreating] = useState(false); // ë°??ì„± ì¤??íƒœ
+  
+
+  // 1ï¸âƒ£ ?˜ì´ì§€ê°€ ?´ë¦´ ?? ë¡œê·¸??ê²€??& ???˜ì—… ëª©ë¡ ë¶ˆëŸ¬?¤ê¸°
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        // ?„ì¬ ë¡œê·¸?¸í•œ ? ì? ?•ë³´ ê°€?¸ì˜¤ê¸?
+        const user = await getCurrentUser();
+        
+        // ë¡œê·¸?????ˆìœ¼ë©?ë¡œê·¸??ì°½ìœ¼ë¡?ì«“ì•„??
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+
+        setUserId(user.id);
+        // ?´ë©”???ìë¦¬ë? ?„ì‹œ ?´ë¦„?¼ë¡œ ?¬ìš© (?˜ì¤‘??profiles ?Œì´ë¸??°ë™ ???˜ì • ê°€??
+        setUserName(user.email?.split("@")[0] || "? ìƒ??);
+
+        // ? ìƒ?˜ì´ ë§Œë“  ë°?ëª©ë¡ ê°€?¸ì˜¤ê¸?
+        const myRooms = await getTeacherRooms(user.id);
+        setRooms(myRooms || []);
+
+      } catch (error) {
+        console.error("?°ì´??ë¡œë”© ?ëŸ¬:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, [router]);
+
+  // 2ï¸âƒ£ "?ˆë¡œ??êµì‹¤ ë§Œë“¤ê¸? ë²„íŠ¼ ?´ë¦­ ??
+  const handleCreateRoom = async () => {
+    if (!userId) return;
+    setIsCreating(true);
+
+    try {
+      // ì§„ì§œ DB??ë°??ì„±!
+      const newRoom = await createRoom(userId);
+      
+      // ?ì„±???„ë£Œ?˜ë©´ ë°œê¸‰ë°›ì? ì½”ë“œ(newRoom.code)ë¥?ê°€ì§€ê³?ì¹ íŒ?¼ë¡œ ?´ë™!
+      router.push(`/room/${newRoom.code}?role=teacher&name=${encodeURIComponent(userName)}`);
+    } catch (error) {
+      alert("êµì‹¤???ì„±?˜ëŠ” ì¤?ë¬¸ì œê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤.");
+      setIsCreating(false);
+    }
+  };
+
+  // 3ï¸âƒ£ "ë¡œê·¸?„ì›ƒ" ë²„íŠ¼ ?´ë¦­ ??
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/login");
+  };
+
+  const handleDeleteRoom = async (roomId: string) => {
+    // ?¤ìˆ˜ë¡??„ë? ???ˆìœ¼????ë²?ë¬¼ì–´ë³´ê¸°
+    const isConfirm = window.confirm("?•ë§ ??êµì‹¤???? œ?˜ì‹œê² ìŠµ?ˆê¹Œ?\n(ê´€?¨ëœ ëª¨ë“  ?„ê¸° ?°ì´?°ê? ?êµ¬?ìœ¼ë¡??? œ?©ë‹ˆ??)");
+    if (!isConfirm) return;
+
+    try {
+      // DB?ì„œ ì§„ì§œ ?? œ!
+      await deleteRoom(roomId);
+      
+      // ?”ë©´?ì„œ??ì¦‰ì‹œ ì§€?Œì£¼ê¸?(?ˆë¡œê³ ì¹¨ ???´ë„ ??
+      setRooms((prevRooms) => prevRooms.filter((room) => room.id !== roomId));
+    } catch (error) {
+      alert("êµì‹¤???? œ?˜ëŠ” ì¤?ë¬¸ì œê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤.");
+    }
+  };
+  
+  // ??ë¡œë”© ì¤‘ì¼ ??ë³´ì—¬ì¤??”ë©´
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-gray-50">
+        <Loader2 size={48} className="animate-spin text-blue-600 mb-4" />
+        <p className="text-gray-500 font-medium">?€?œë³´?œë? ë¶ˆëŸ¬?¤ëŠ” ì¤‘ì…?ˆë‹¤...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
+      
+      {/* ?Ÿ¢ ì¢Œì¸¡ ?¬ì´?œë°” */}
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex">
+        <div className="p-6">
+          <div className="flex items-center gap-2 font-bold text-xl text-blue-600">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+              <BookOpen size={18} />
+            </div>
+            <span>layboad</span>
+          </div>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-1">
+          <NavItem icon={<LayoutDashboard size={20} />} label="?€?œë³´?? active />
+          <NavItem icon={<BookOpen size={20} />} label="??êµì¬?? />
+          <NavItem icon={<CreditCard size={20} />} label="êµ¬ë… ë°?ê²°ì œ" href="/pricing" />
+          <NavItem icon={<Settings size={20} />} label="?˜ê²½ ?¤ì •" />
+        </nav>
+
+        <div className="p-4 border-t border-gray-100">
+          {/* ??ë¡œê·¸?„ì›ƒ ê¸°ëŠ¥ ?°ê²° */}
+          <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 text-sm font-semibold text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
+            <LogOut size={20} /> ë¡œê·¸?„ì›ƒ
+          </button>
+        </div>
+      </aside>
+
+      {/* ?Ÿ¢ ë©”ì¸ ì½˜í…ì¸??ì—­ */}
+      <main className="flex-1 overflow-y-auto">
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 px-8 flex items-center justify-between sticky top-0 z-10">
+          <div className="relative w-full max-w-sm group">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+            <input 
+              type="text" 
+              placeholder="ë°?ì½”ë“œ ê²€?? 
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 border-transparent border focus:bg-white focus:border-blue-500 rounded-xl text-sm outline-none transition-all"
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-bold text-gray-900">{userName} ? ìƒ??/p>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 border-2 border-white shadow-sm flex items-center justify-center text-white font-bold text-sm">
+              {userName[0]}
+            </div>
+          </div>
+        </header>
+
+        <div className="p-8 max-w-5xl mx-auto">
+          <section className="mb-10">
+            <h1 className="text-3xl font-extrabold text-gray-900 mb-2">ë°˜ê°‘?µë‹ˆ?? {userName}?? ?‘‹</h1>
+            <p className="text-gray-500 font-medium">?¤ëŠ˜???™ìƒ?¤ê³¼ ì¦ê±°???˜ì—… ?˜ì‹œê¸?ë°”ë?ˆë‹¤.</p>
+          </section>
+
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
+              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-6">
+                <Plus size={28} />
+              </div>
+              <h3 className="text-xl font-bold mb-2">?ˆë¡œ??êµì‹¤ ë§Œë“¤ê¸?/h3>
+              <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                ?´ë¦­ ??ë²ˆìœ¼ë¡?ì¦‰ì‹œ ?˜ì—…???œì‘?????ˆëŠ” ê³ ìœ  ì£¼ì†Œë¥??ì„±?©ë‹ˆ??
+              </p>
+              {/* ??ë°??ì„± ê¸°ëŠ¥ ?°ê²° */}
+              <button 
+                onClick={handleCreateRoom}
+                disabled={isCreating}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition-all active:scale-[0.98] disabled:opacity-70 flex justify-center items-center gap-2"
+              >
+                {isCreating ? <><Loader2 size={20} className="animate-spin" /> ?ì„± ì¤?..</> : "êµì‹¤ ?…ì¥?˜ê¸°"}
+              </button>
+            </div>
+            {/* ?°ì¸¡ ì¹´ë“œ (êµì¬ ?¼ì´ë¸ŒëŸ¬ë¦?- ì¶”í›„ êµ¬í˜„) */}
+            <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm opacity-60">
+              <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center mb-6">
+                <BookOpen size={28} />
+              </div>
+              <h3 className="text-xl font-bold mb-2">êµì¬ ?¼ì´ë¸ŒëŸ¬ë¦?(ì¤€ë¹„ì¤‘)</h3>
+              <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                ?ì£¼ ?¬ìš©?˜ëŠ” PDF êµì¬ë¥?ë¯¸ë¦¬ ?…ë¡œ?œí•˜??ë³´ê??????ˆìŠµ?ˆë‹¤.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-extrabold text-gray-900">??êµì‹¤ ëª©ë¡</h2>
+            </div>
+            
+            {/* ??ì§„ì§œ DB?ì„œ ë¶ˆëŸ¬??ë°?ëª©ë¡ ?Œë”ë§?*/}
+            {rooms.length === 0 ? (
+              <div className="bg-white p-10 rounded-2xl border border-dashed border-gray-300 text-center">
+                <p className="text-gray-500 font-medium">?„ì§ ?ì„±??êµì‹¤???†ìŠµ?ˆë‹¤.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {rooms.map((room) => (
+                  <div key={room.id} className="bg-white p-5 rounded-2xl border border-gray-200 flex items-center justify-between hover:border-blue-300 transition-colors group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-xl flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+                        <BookOpen size={24} />
+                      </div>
+                      <div>
+                        {/* ?„ì‹œ ë°??´ë¦„: ì½”ë“œ ?œìš© */}
+                        <h4 className="font-bold text-gray-900">?´ë˜??{room.code}</h4>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 font-medium">
+                          <span>{new Date(room.created_at).toLocaleDateString()} ?ì„±</span>
+                          <span>??/span>
+                          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono font-bold">{room.code}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {/* ??ë°œê¸‰??ì½”ë“œë¡??”ì´?¸ë³´???…ì¥?˜ê¸° */}
+                      <button 
+                        onClick={() => router.push(`/room/${room.code}?role=teacher&name=${userName}`)}
+                        className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                        title="?…ì¥?˜ê¸°"
+                      >
+                        <ExternalLink size={20} />
+                      </button>
+
+                      {/* ??ë°??? œ?˜ê¸° ë²„íŠ¼ */}
+                      <button 
+                        onClick={() => handleDeleteRoom(room.id)}
+                        className="p-2.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"
+                        title="?? œ?˜ê¸°"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function NavItem({ icon, label, active = false, href = "#" }: { icon: React.ReactNode, label: string, active?: boolean, href?: string }) {
+  // 1. ê³µí†µ ?¤í????•ì˜
+  const baseStyle = `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+    active ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+  }`;
+
+  // 2. hrefê°€ '#'?´ë©´ ê·¸ëƒ¥ div(ë§í¬ ?†ìŒ), ?„ë‹ˆë©?Link(?´ë™ ê°€??
+  if (href === "#") {
+    return (
+      <div className={baseStyle}>
+        {icon} {label}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={href} className={baseStyle}>
+      {icon} {label}
+    </Link>
+  );
+}
+
+
+====== W:\work\layboad\layboad\src\app\pricing\page.tsx ======
+
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Check, HelpCircle, MonitorPlay, Sparkles, Clock } from "lucide-react";
+import Link from "next/link";
+
+export default function PricingPage() {
+  const router = useRouter();
+  const [isAnnual, setIsAnnual] = useState(false);
+
+  const handlePlanSelect = (planName: string) => {
+    console.log(`${planName} ?Œëœ ? íƒ??);
+    // ?š§ Basic?€ ë¬´ë£Œ ì²´í—˜?¼ë¡œ, Pro/Enterprise??ê²°ì œ???ë‹´?¼ë¡œ ?´ì–´ì§????ˆë„ë¡?ë¶„ê¸° ì²˜ë¦¬ê°€ ?„ìš”?©ë‹ˆ??
+    router.push("/login"); 
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-blue-100">
+      
+      {/* ?Ÿ¢ ?ë‹¨ ?¤ë¹„ê²Œì´??ë°?*/}
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-50 backdrop-blur-md bg-white/80">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-blue-600">
+            <MonitorPlay size={24} />
+            <span>layboad</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+              ? ìƒ??ë¡œê·¸??
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* ?Ÿ¢ ë©”ì¸ ì½˜í…ì¸?*/}
+      <main className="max-w-6xl mx-auto px-6 py-20 text-center">
+        
+        {/* ?€?´í? ?ì—­ */}
+        <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">
+            ?˜ì—…?ë§Œ ì§‘ì¤‘?˜ì„¸?? <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500">?©ë¦¬?ì¸ ê°€ê²?/span>?€ ?€?¬ê? ë§¡ì„ê²Œìš”.
+          </h1>
+          <p className="text-lg text-gray-500 max-w-xl mx-auto font-medium">
+            ì´ˆê¸° ë¹„ìš© ?œë¡œ. ?„ìš”??ë§Œí¼ë§?? íƒ?˜ê³  ?¸ì œ??ë³€ê²½í•˜?¸ìš”.
+          </p>
+        </div>
+
+        {/* ?Ÿ¢ 30??ë¬´ë£Œ ì²´í—˜ ê³µì? ë°°ë„ˆ (Basic ?œì •) */}
+        <div className="max-w-2xl mx-auto mb-12 bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center justify-center gap-3 animate-in fade-in duration-700">
+          <Clock className="text-blue-500" size={24} />
+          <p className="text-blue-800 font-semibold text-sm md:text-base">
+            ëª¨ë“  ? ìƒ?˜ê»˜ <span className="font-bold text-blue-600">Basic ?Œëœ ì²??˜ì—… ?œì‘?¼ë¡œë¶€??30?¼ê°„ ë¬´ë£Œ ì²´í—˜</span>???œê³µ?©ë‹ˆ??
+          </p>
+        </div>
+
+        {/* ?Ÿ¢ ?”ê°„ / ?°ê°„ ê²°ì œ ? ê? ?¤ìœ„ì¹?*/}
+        <div className="flex items-center justify-center gap-3 mb-16 animate-in fade-in duration-700">
+          <span className={`text-sm font-bold ${!isAnnual ? "text-gray-900" : "text-gray-400"}`}>?”ê°„ ê²°ì œ</span>
+          <button 
+            onClick={() => setIsAnnual(!isAnnual)}
+            className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors duration-300 outline-none ${isAnnual ? "bg-blue-600" : "bg-gray-300"}`}
+          >
+            <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform duration-300 ${isAnnual ? "translate-x-6" : "translate-x-0"}`} />
+          </button>
+          <span className={`text-sm font-bold flex items-center gap-1.5 ${isAnnual ? "text-gray-900" : "text-gray-400"}`}>
+            ?°ê°„ ê²°ì œ 
+            <span className="bg-emerald-100 text-emerald-700 text-[11px] font-extrabold px-2 py-0.5 rounded-full">20% ? ì¸</span>
+          </span>
+        </div>
+
+        {/* ?Ÿ¢ ?”ê¸ˆ??ì¹´ë“œ ê·¸ë¦¬???ˆì´?„ì›ƒ (3ê°?ì»¬ëŸ¼ ë³µêµ¬) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
+          
+          {/* 1. Basic ?Œëœ (1:1 ~ 1:2 ?„ìš©) */}
+          <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm flex flex-col justify-between h-[600px] hover:border-gray-300 transition-all">
+            <div>
+              <h3 className="text-lg font-bold text-gray-600 text-left">Basic</h3>
+              <p className="text-sm text-gray-400 text-left mt-1">1:1 ë°?1:2 ?Œê·œëª?ê³¼ì™¸ ? ìƒ?˜ì„ ?„í•œ ?¤ì† ?Œëœ</p>
+              <div className="text-left my-6">
+                <span className="text-4xl font-extrabold">
+                  {isAnnual ? "??,000" : "??,000"}
+                </span>
+                <span className="text-gray-400 text-sm font-medium"> / ??/span>
+                {isAnnual && <p className="text-xs text-emerald-600 font-bold mt-1">?°ê°„ ê²°ì œ ????12,000???ˆì•½</p>}
+              </div>
+              <hr className="border-gray-100 my-6" />
+              <ul className="space-y-4 text-left">
+                <FeatureItem text="?˜ì—…??ìµœë? ?™ìƒ ??2ëª?(1:2 ?˜ì—… ê°€??" />
+                <FeatureItem text="?˜ì—… ì§„í–‰ ?œê°„ ë¬´ì œ?? />
+                <FeatureItem text="ê°œì„¤ ê°€??êµì‹¤ ë¬´ì œ?? />
+                <FeatureItem text="êµì¬ ?€???´ë¼?°ë“œ 1GB" />
+              </ul>
+            </div>
+            <button 
+              onClick={() => handlePlanSelect("Basic")}
+              className="w-full py-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-2xl transition-all mt-6"
+            >
+              30??ë¬´ë£Œë¡??œì‘?˜ê¸°
+            </button>
+          </div>
+
+          {/* 2. Pro ?Œëœ (ê·¸ë£¹ ?˜ì—…?? */}
+          <div className="bg-white rounded-3xl p-8 border-2 border-blue-600 shadow-xl shadow-blue-100/50 flex flex-col justify-between h-[630px] relative -mt-4 transform scale-105 md:scale-105 z-10">
+            <div className="absolute top-0 right-8 -translate-y-1/2 bg-gradient-to-r from-blue-600 to-indigo-500 text-white text-xs font-extrabold px-4 py-1.5 rounded-full shadow-md flex items-center gap-1">
+              <Sparkles size={12} /> MOST POPULAR
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-blue-600 text-left">Pro</h3>
+              <p className="text-sm text-gray-400 text-left mt-1">?¤ìˆ˜ ?™ìƒ ë°??Œê·œëª?ê·¸ë£¹ ê³¼ì™¸ ? ìƒ??/p>
+              <div className="text-left my-6">
+                <span className="text-4xl font-extrabold">
+                  {isAnnual ? "??3,000" : "??9,000"}
+                </span>
+                <span className="text-gray-400 text-sm font-medium"> / ??/span>
+                {isAnnual && <p className="text-xs text-emerald-600 font-bold mt-1">?°ê°„ ê²°ì œ ????72,000???ˆì•½</p>}
+              </div>
+              <hr className="border-gray-100 my-6" />
+              <ul className="space-y-4 text-left">
+                <FeatureItem text="?˜ì—…???™ìƒ ??ìµœë? 10ëª?(ê·¸ë£¹ ?˜ì—…)" highlighted />
+                <FeatureItem text="?˜ì—… ì§„í–‰ ?œê°„ ë¬´ì œ?? highlighted />
+                <FeatureItem text="ê°œì„¤ ê°€??êµì‹¤ ë¬´ì œ?? highlighted />
+                <FeatureItem text="êµì¬ ?€???´ë¼?°ë“œ 20GB" highlighted />
+              </ul>
+            </div>
+            <button 
+              onClick={() => handlePlanSelect("Pro")}
+              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98] mt-6"
+            >
+              Pro ?Œëœ ?œì‘?˜ê¸°
+            </button>
+          </div>
+
+          {/* 3. Enterprise ?Œëœ (?€???™ì›) */}
+          <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm flex flex-col justify-between h-[600px] hover:border-gray-300 transition-all">
+            <div>
+              <h3 className="text-lg font-bold text-gray-600 text-left">Enterprise</h3>
+              <p className="text-sm text-gray-400 text-left mt-1">?€???™ì› ë°??„ë¬¸ êµìœ¡ ê¸°ê?</p>
+              <div className="text-left my-6">
+                <span className="text-3xl font-extrabold">ë³„ë„ ë¬¸ì˜</span>
+                <span className="text-gray-400 text-sm font-medium"> / ë§ì¶¤??ê°€ê²?/span>
+              </div>
+              <hr className="border-gray-100 my-6" />
+              <ul className="space-y-4 text-left">
+                <FeatureItem text="?™ì› ?„ìš© ?µí•© ê´€ë¦¬ì ?€?œë³´?? />
+                <FeatureItem text="?Œì† ê°•ì‚¬ ê³„ì • ë¬´ì œ???ì„±" />
+                <FeatureItem text="?´ë¼?°ë“œ ?€?¥ì†Œ ë§ì¶¤??ë¬´ì œ???œê³µ" />
+                <FeatureItem text="?™ì› ë¡œê³  ?ìš© (?”ì´?¸ë¼ë²¨ë§)" />
+                <FeatureItem text="24/7 ?¤ì‹œê°??„ë‹´ ê¸°ìˆ  ì§€?? />
+              </ul>
+            </div>
+            <button 
+              onClick={() => handlePlanSelect("Enterprise")}
+              className="w-full py-4 bg-gray-900 hover:bg-black text-white font-bold rounded-2xl transition-all mt-6"
+            >
+              ê³ ê°?¼í„° ë¬¸ì˜?˜ê¸°
+            </button>
+          </div>
+
+        </div>
+
+        {/* ?˜ë‹¨ FAQ ?ì»· ?•ë³´ */}
+        <p className="mt-16 text-sm text-gray-400 font-medium flex items-center justify-center gap-1">
+          <HelpCircle size={16} /> ?€???™ì›/ê¸°ì—… ?„ì… ?ëŠ” ë§ì¶¤??ê¸°ëŠ¥???„ìš”?˜ì‹ ê°€?? <a href="#" className="text-blue-500 hover:underline">ë¬¸ì˜?˜ê¸°</a>
+        </p>
+
+      </main>
+    </div>
+  );
+}
+
+// ?Ÿ¢ ì²´í¬ë§ˆí¬ ?„ì´??ì»´í¬?ŒíŠ¸
+function FeatureItem({ text, highlighted = false }: { text: string; highlighted?: boolean }) {
+  return (
+    <li className="flex items-center gap-3 text-sm font-medium text-gray-600">
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${highlighted ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"}`}>
+        <Check size={12} strokeWidth={3} />
+      </div>
+      <span>{text}</span>
+    </li>
+  );
+}
+
+
+====== W:\work\layboad\layboad\src\app\room\[roomId]\page.tsx ======
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { Loader2, AlertTriangle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { getCurrentUser } from "@/lib/api/auth";
+import Whiteboard from "@/components/Whiteboard";
+
+// ???°ë¦¬ê°€ ë§Œë“  ë°?ê²€ì¦?DB ëª¨ë“ˆ ë¶ˆëŸ¬?¤ê¸°
+import { verifyRoomCode } from "@/lib/api/rooms";
+
+export default function RoomPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // URL?ì„œ ?•ë³´ ë½‘ì•„?¤ê¸°
+  const roomId = params.roomId as string;
+  const role = searchParams.get("role") as "teacher" | "student" | null;
+  const name = searchParams.get("name");
+
+  // ?Ÿ¢ ?íƒœ ê´€ë¦?(ë¡œë”© ì¤‘ì¸ì§€, ì§„ì§œ ?ˆëŠ” ë°©ì¸ì§€)
+  const [isLoading, setIsLoading] = useState(true);
+  const [isValidRoom, setIsValidRoom] = useState(false);
+
+  // ?˜ì´ì§€ê°€ ?´ë¦´ ??DB??"??ë°?ì§„ì§œ ?ˆì–´?" ?˜ê³  ë¬¼ì–´ë´…ë‹ˆ??
+  useEffect(() => {
+    async function checkRoom() {
+      // 1ì°??…êµ¬ì»? ?„ìˆ˜ ?•ë³´ê°€ ì£¼ì†Œì°½ì— ?†ìœ¼ë©?ë°”ë¡œ ?„ì›ƒ
+      if (!roomId || !role || !name) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // ??2ì°??…êµ¬ì»? ì§„ì§œ DB????ë°?code)??ì¡´ì¬?˜ëŠ”ì§€ ?•ì¸!
+        const room = await verifyRoomCode(roomId);
+        
+        if (room) {
+          // ?š¨ 3ì°??…êµ¬ì»? URL??ì¡°ì‘?´ì„œ ? ìƒ?˜ì¸ ì²™í•˜???™ìƒ ?¡ì•„?´ê¸°!
+          if (role === "teacher") {
+            const user = await getCurrentUser(); // ì§„ì§œ ë¡œê·¸?¸ëœ ? ì??¸ì? ?•ì¸
+            if (!user) {
+              console.warn("ë¡œê·¸?¸ë˜ì§€ ?Šì? ê°€ì§?? ìƒ?˜ì…?ˆë‹¤.");
+              setIsValidRoom(false); // ì«“ì•„?´ê¸°
+              return;
+            }
+          }
+          
+          setIsValidRoom(true); // ëª¨ë“  ê²€??ë¬´ì‚¬ ?µê³¼!
+        } else {
+          setIsValidRoom(false); // ê°€ì§?ë°©ì´ê±°ë‚˜ ?«íŒ ë°?        }
+      } catch (error) {
+        console.error("ë°?ê²€ì¦??ëŸ¬:", error);
+        setIsValidRoom(false);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    checkRoom();
+  }, [roomId, role, name]);
+
+  // ??1. ë¬¸ì?ê¸°ê? DB ì¡°íšŒ?˜ëŠ” ?™ì•ˆ ë³´ì—¬ì¤?ë¡œë”© ?”ë©´
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50 flex-col gap-4 font-sans">
+        <Loader2 size={48} className="animate-spin text-blue-600" />
+        <p className="text-gray-500 font-bold">êµì‹¤ ?íƒœë¥??•ì¸?˜ê³  ?ˆìŠµ?ˆë‹¤...</p>
+      </div>
+    );
+  }
+
+  // ??2. ê°€ì§?ë°©ì´ê±°ë‚˜ ?•ë³´ê°€ ?„ë½??ê²½ìš°???ëŸ¬ ?”ë©´
+  if (!roomId || !role || !name || !isValidRoom) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50 font-sans px-4">
+        <div className="bg-white p-10 rounded-3xl shadow-xl shadow-gray-200/50 text-center max-w-md w-full border border-gray-100 animate-in zoom-in-95 duration-300">
+          <div className="w-16 h-16 bg-red-100 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle size={32} />
+          </div>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-2">?…ì¥?????†ëŠ” êµì‹¤?…ë‹ˆ??/h2>
+          <p className="text-gray-500 mb-8 font-medium leading-relaxed">
+            ë°?ì½”ë“œê°€ ?˜ëª»?˜ì—ˆê±°ë‚˜, ? ìƒ?˜ì´ ?´ë? ?˜ì—…??ì¢…ë£Œ?ˆìŠµ?ˆë‹¤. <br/> ì½”ë“œë¥??¤ì‹œ ?•ì¸?´ì£¼?¸ìš”.
+          </p>
+          <button 
+            onClick={() => router.push('/')}
+            className="w-full py-4 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition-all active:scale-[0.98]"
+          >
+            ë©”ì¸ ?”ë©´?¼ë¡œ ?Œì•„ê°€ê¸?          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ??3. ë¬´ì‚¬???µê³¼?ˆë‹¤ë©?ì§„ì§œ ì¹ íŒ ?Œë”ë§?
+  return (
+    <div className="w-full h-screen overflow-hidden bg-gray-50">
+      <Whiteboard 
+        roomId={roomId} 
+        role={role} 
+        userName={name} 
+      />
+    </div>
+  );
+}
+
+
+
+====== W:\work\layboad\layboad\src\app\layout.tsx ======
+
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}
+
+
+====== W:\work\layboad\layboad\src\app\page.tsx ======
+
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, MonitorPlay, Users, Sparkles, BookOpen } from "lucide-react";
+import Link from "next/link";
+
+export default function LandingPage() {
+  const router = useRouter();
+  const [roomCode, setRoomCode] = useState("");
+
+  // ?‘¨?ğŸ??™ìƒ ?…ì¥ ì²˜ë¦¬
+  const handleStudentJoin = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const code = roomCode.trim().toUpperCase();
+    if (!code) return alert("ì´ˆë? ì½”ë“œë¥??…ë ¥?´ì£¼?¸ìš”!");
+    
+    // ?™ìƒ?€ ë°?ë²ˆí˜¸ë§??¤ê³  '?€ê¸°ì‹¤(join)'ë¡??´ë™! ?´ë¦„?€ ê±°ê¸°???ìŠµ?ˆë‹¤.
+    router.push(`/join/${code}`);
+  };
+
+  return (
+    <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-blue-100">
+      
+      {/* ?Ÿ¢ ?¤ë¹„ê²Œì´??ë°?*/}
+      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-blue-600">
+            <MonitorPlay size={24} />
+            <span>layboad</span>
+          </div>
+          <nav className="flex items-center gap-4">
+            <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+              ? ìƒ??ë¡œê·¸??            </Link>
+            <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+              ë¬´ë£Œë¡??œì‘?˜ê¸°
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      {/* ?Ÿ¢ ë©”ì¸ ?ˆì–´ë¡??¹ì…˜ */}
+      <main className="pt-32 pb-16 px-6">
+        <div className="max-w-4xl mx-auto text-center mt-12 mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-sm font-bold mb-6">
+            <Sparkles size={16} />
+            <span>?¨ë¼??ê³¼ì™¸ë¥??„í•œ ê°€???„ë²½???”ë£¨??/span>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-gray-900 mb-6 leading-tight">
+            PDF êµì¬ ?„ì— ?¼ì³ì§€??<br className="hidden md:block" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500">?¤ì‹œê°?ë§ˆë²• ì¹ íŒ</span>
+          </h1>
+          <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
+            ë¬´ê±°???„ë¡œê·¸ë¨ ?¤ì¹˜ ?†ì´, ë¸Œë¼?°ì? ?´ë¦­ ??ë²ˆìœ¼ë¡??˜ë§Œ??êµì‹¤??ë§Œë“œ?¸ìš”. <br />
+            ë°°ê²½ê³?ë¶„ë¦¬???¤ë§ˆ???€???¨ê³„ë¡??™ìƒ???´í•´?„ë? 200% ?Œì–´?¬ë¦½?ˆë‹¤.
+          </p>
+
+          {/* ? ìƒ???œì‘ & ?™ìƒ ?…ì¥ ??*/}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto">
+            
+            <button 
+              onClick={() => router.push("/login")}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold px-8 py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98]"
+            >
+              ? ìƒ?˜ìœ¼ë¡??œì‘?˜ê¸° <ArrowRight size={20} />
+            </button>
+
+            <form onSubmit={handleStudentJoin} className="w-full sm:w-auto flex relative group">
+              <input 
+                type="text" 
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value)}
+                placeholder="?™ìƒ ì´ˆë? ì½”ë“œ ?…ë ¥" 
+                className="w-full sm:w-64 pl-5 pr-14 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl outline-none focus:border-blue-500 focus:bg-white transition-all text-lg uppercase font-mono tracking-widest placeholder:tracking-normal placeholder:font-sans"
+                maxLength={6}
+              />
+              <button 
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-gray-900 hover:bg-black text-white rounded-xl transition-colors"
+                title="?…ì¥?˜ê¸°"
+              >
+                <ArrowRight size={20} />
+              </button>
+            </form>
+
+          </div>
+        </div>
+
+        {/* ?Ÿ¢ ê¸°ëŠ¥ ?˜ì´?¼ì´???¹ì…˜ */}
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 mt-24">
+          <div className="p-8 rounded-3xl bg-gray-50 border border-gray-100">
+            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-6">
+              <BookOpen size={24} />
+            </div>
+            <h3 className="text-xl font-bold mb-3">ì´ˆê³ ??PDF ë¡œë”©</h3>
+            <p className="text-gray-600 leading-relaxed">
+              ?˜ë°± ?˜ì´ì§€??êµì¬??ê¸°ë‹¤ë¦??†ì´ ì¦‰ì‹œ ?„ì›?ˆë‹¤. ?¤ë§ˆ??ìºì‹±?¼ë¡œ ê¹œë¹¡???†ëŠ” ?˜ì´ì§€ ?˜ê???ê²½í—˜?˜ì„¸??
+            </p>
+          </div>
+          <div className="p-8 rounded-3xl bg-gray-50 border border-gray-100">
+            <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mb-6">
+              <Users size={24} />
+            </div>
+            <h3 className="text-xl font-bold mb-3">?™ìƒ ?„ê¸° ?„ë²½ ?µì œ</h3>
+            <p className="text-gray-600 leading-relaxed">
+              ?˜ì—…??ë°©í•´?˜ëŠ” ?™ìƒ???™ì„œë¥?? ìƒ?˜ì´ ?´ë¦­ ??ë²ˆìœ¼ë¡?ê°€ë¦¬ê±°???¬ëª…?„ë? ì¡°ì ˆ?????ˆìŠµ?ˆë‹¤.
+            </p>
+          </div>
+          <div className="p-8 rounded-3xl bg-gray-50 border border-gray-100">
+            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-6">
+              <MonitorPlay size={24} />
+            </div>
+            <h3 className="text-xl font-bold mb-3">?¤ë§ˆ???€???ˆì´??/h3>
+            <p className="text-gray-600 leading-relaxed">
+              ë³µì¡???˜í•™ ë¬¸ì œ???€???¨ê³„ë³„ë¡œ ?˜ëˆ„???€?¥í•˜ê³? ?í•  ?Œë§ˆ???ˆì•Œ ë²„íŠ¼?¼ë¡œ ?„ê³  ì¼????ˆìŠµ?ˆë‹¤.
+            </p>
+          </div>
+        </div>
+      </main>
+
+    </div>
+  );
+}
+
+
+====== W:\work\layboad\layboad\src\components\BottomBar.tsx ======
+
+import React from "react";
+import { ChevronLeft, ChevronRight, Trash2, Plus } from "lucide-react";
+
+// ??ë©”ì¸ ?Œì¼(Whiteboard.tsx)?ì„œ ë°›ì•„???°ì´??ê·œê²©??
+export interface BottomBarProps {
+  currentPageIndex: number;
+  totalPages: number;
+  prevPage: () => void;
+  nextPage: () => void;
+  deletePage: () => void;
+  mode: "edit" | "class";
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  pdfFilePending: File | null;
+  setPdfFilePending: (file: File | null) => void;
+  handleFileUpload: (file: File, orientation: "portrait" | "landscape") => void;
+}
+
+const BottomBar = ({
+  currentPageIndex,
+  totalPages,
+  prevPage,
+  nextPage,
+  deletePage,
+  mode,
+  fileInputRef,
+  pdfFilePending,
+  setPdfFilePending,
+  handleFileUpload
+}: BottomBarProps) => {
+
+  return (
+    <>
+      {/* 1. ?˜ë‹¨ ì¤‘ì•™: ?˜ì´ì§€ ?´ë™ ì»¨íŠ¸ë¡¤ëŸ¬ */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white/90 backdrop-blur-md px-5 py-2.5 rounded-2xl shadow-lg border border-gray-200 z-20">
+        <button 
+          onClick={prevPage} 
+          disabled={currentPageIndex === 0} 
+          className="p-2 text-gray-500 hover:text-blue-600 disabled:opacity-30 disabled:hover:text-gray-500 transition-colors"
+          title="?´ì „ ?˜ì´ì§€"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <span className="text-sm font-bold text-gray-700 min-w-[3rem] text-center tracking-widest">
+          {currentPageIndex + 1} <span className="text-gray-300 mx-1">/</span> {Math.max(totalPages, currentPageIndex + 1)}
+        </span>
+        <button 
+          onClick={nextPage} 
+          className="p-2 text-gray-500 hover:text-blue-600 transition-colors"
+          title="?¤ìŒ ?˜ì´ì§€"
+        >
+          <ChevronRight size={20} />
+        </button>
+        
+        {/* ?¸ì§‘ ëª¨ë“œ???Œë§Œ ?´ì????˜ì´ì§€ ?? œ) ë³´ì´ê¸?*/}
+        {mode === "edit" && (
+          <>
+            <div className="w-[1px] h-6 bg-gray-200 mx-1" />
+            <button onClick={deletePage} className="p-2 text-red-400 hover:text-red-600 transition-colors active:scale-90" title="?„ì¬ ?˜ì´ì§€ ?? œ">
+              <Trash2 size={18} />
+            </button>
+          </>
+        )}
+      </div>
+      
+      {/* 2. ?°ì¸¡ ?˜ë‹¨: êµì¬(PDF/?´ë?ì§€) ì¶”ê? ë²„íŠ¼ */}
+      {mode === "edit" && (
+        <button 
+          onClick={() => fileInputRef.current?.click()} 
+          className="absolute bottom-8 right-8 w-14 h-14 bg-orange-600 text-white rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-10 shadow-orange-200 animate-in fade-in zoom-in-75 duration-200"
+          title="êµì¬/?´ë?ì§€ ?…ë¡œ??
+        >
+          <Plus size={28} />
+        </button>
+      )}
+
+      {/* 3. ?”ë©´ ?„ì²´ ??¸°: PDF ë°©í–¥ ?¤ì • ëª¨ë‹¬ì°?*/}
+      {pdfFilePending && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col gap-5 animate-in zoom-in-95 max-w-sm w-full">
+            <h3 className="text-xl font-bold text-gray-800 text-center">PDF ë°©í–¥ ?¤ì •</h3>
+            <p className="text-sm text-gray-500 text-center -mt-2">?˜ì—… ?˜ê²½??ë§ì¶° PDFë¥??´ë–»ê²??„ìš¸ê¹Œìš”?</p>
+            <div className="flex flex-col gap-3 mt-2">
+              <button 
+                onClick={() => { handleFileUpload(pdfFilePending, "portrait"); setPdfFilePending(null); }} 
+                className="px-4 py-4 bg-gray-100 text-gray-800 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+              >
+                ?¸ë¡œë¡?ë§ì¶”ê¸?(?ë³¸ ë¹„ìœ¨)
+              </button>
+              <button 
+                onClick={() => { handleFileUpload(pdfFilePending, "landscape"); setPdfFilePending(null); }} 
+                className="px-4 py-4 bg-orange-100 text-orange-700 rounded-xl font-bold hover:bg-orange-200 transition-colors"
+              >
+                ê°€ë¡œë¡œ ?•íˆê¸?(-90???Œì „)
+              </button>
+            </div>
+            <button 
+              onClick={() => setPdfFilePending(null)} 
+              className="mt-2 py-2 text-sm text-gray-400 font-semibold hover:text-gray-600 transition-colors"
+            >
+              ì·¨ì†Œ
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default BottomBar;
+
+
+====== W:\work\layboad\layboad\src\components\FloatingToolbar.tsx ======
+
+import React, { useState } from "react";
+import { 
+    MousePointer2, Trash2, Pen, Highlighter, Type, Square, 
+    Scissors, Eraser, Minus, Circle, Triangle, Plus, X, 
+    PenLine, PenTool, Paintbrush, Lock, Unlock 
+  } from "lucide-react";
+import { HexColorPicker } from "react-colorful";
+import { PenStyle, BrushConfig } from "../hooks/usePerfectFreehand";
+import { ShapeType } from "../hooks/useShape";
+
+const PRESET_COLORS = ["#000000", "#0000FF", "#FF0000", "#008000", "#add8e6"];
+const PEN_TYPES: { id: PenStyle; label: string; icon: React.ReactNode }[] = [
+  { id: "ballpoint", label: "ë³¼íœ", icon: <PenLine size={20} /> },
+  { id: "fountain", label: "ë§Œë…„??, icon: <PenTool size={20} /> },
+  { id: "brush", label: "ë¶“íœ", icon: <Paintbrush size={20} /> },
+];
+
+export interface FloatingToolbarProps {
+  activeTool: "select" | "pen" | "highlighter" | "eraser" | "text" | "capture" | "shape";
+  handleToolClick: (tool: any) => void;
+  hasSelection: boolean;
+  deleteSelectedObjects: () => void;
+  mode: "edit" | "class";
+  popoverOpen: "pen" | "highlighter" | "shape" | null;
+  selectedShape: ShapeType;
+  setSelectedShape: (shape: ShapeType) => void;
+  penConfig: { color: string; size: number; style: PenStyle };
+  currentConfig: BrushConfig;
+  updateConfig: (updates: any) => void;
+  showColorPicker: boolean;
+  setShowColorPicker: (show: boolean) => void;
+}
+
+const FloatingToolbar = ({
+  activeTool,
+  handleToolClick,
+  hasSelection,
+  deleteSelectedObjects,
+  mode,
+  popoverOpen,
+  selectedShape,
+  setSelectedShape,
+  penConfig,
+  currentConfig,
+  updateConfig,
+  showColorPicker,
+  setShowColorPicker,
+}: FloatingToolbarProps) => {
+  // ???´ë°” ê³ ì •(Pin) ?íƒœ?€ ë§ˆìš°???¤ë²„(Hover) ?íƒœë¥?ê´€ë¦¬í•˜??State
+  const [isPinned, setIsPinned] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // ?´ë°”ê°€ ë³´ì—¬???˜ëŠ” ì¡°ê±´: ê³ ì •?˜ì–´ ?ˆê±°?? ë§ˆìš°?¤ê? ê·¼ì²˜???ˆì„ ??
+  const isVisible = isPinned || isHovered;
+
+  return (
+    <div 
+      // ???¸ë²„ ?¸ì‹ ?ì—­ (?„ìª½ 0ë¶€???„ë˜/?‘ì˜†?¼ë¡œ ?¬ìœ  ê³µê°„??ì£¼ì–´ ?½ê²Œ ?˜í??˜ê²Œ ??
+      className="absolute top-0 left-1/2 -translate-x-1/2 pt-2 pb-16 px-16 flex flex-col items-center z-20"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      
+      {/* 1. ?¨ê²¨ì¡Œì„ ???´ì§ ë³´ì´???ë¬¼???ì¡??*/}
+      <div 
+        className={`absolute top-0 transition-all duration-300 ease-in-out cursor-pointer z-10 ${
+          !isVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setIsPinned(true)}
+        title="?´ë°” ê³ ì •?˜ê¸°"
+      >
+        <div className="bg-white/80 backdrop-blur-md px-5 py-1.5 rounded-b-xl shadow-md border border-t-0 border-gray-200 text-gray-400 hover:text-gray-700 transition-colors flex items-center justify-center">
+          <Lock size={16} />
+        </div>
+      </div>
+
+      {/* 2. ë©”ì¸ ?´ë°” ?ì—­ (? ë‹ˆë©”ì´???ìš©) */}
+      <div 
+        className={`flex flex-col items-center transition-all duration-300 ease-in-out ${
+          isVisible ? "translate-y-4 opacity-100" : "-translate-y-[150%] opacity-0 pointer-events-none"
+        }`}
+      >
+        {/* ë©”ì¸ ?´ë°” ë²„íŠ¼??*/}
+        <div className="flex items-center gap-2 p-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200">
+          <button onClick={() => handleToolClick("select")} className={`p-3 rounded-xl transition-all ${activeTool === "select" ? "bg-gray-200 text-gray-800 shadow-sm" : "text-gray-500 hover:bg-gray-100"}`}><MousePointer2 size={24} /></button>
+          {hasSelection && <button onClick={deleteSelectedObjects} className="p-3 -ml-1 mr-1 rounded-xl bg-red-100 text-red-600 shadow-sm hover:bg-red-200 transition-all animate-in zoom-in-75"><Trash2 size={24} /></button>}
+          
+          <div className="w-[1px] h-8 bg-gray-200 mx-1" />
+          
+          <button onClick={() => handleToolClick("pen")} className={`p-3 rounded-xl transition-all ${activeTool === "pen" ? "bg-blue-100 text-blue-600 shadow-sm" : "text-gray-500 hover:bg-gray-100"}`}><Pen size={24} /></button>
+          <button onClick={() => handleToolClick("highlighter")} className={`p-3 rounded-xl transition-all ${activeTool === "highlighter" ? "bg-yellow-100 text-yellow-600 shadow-sm" : "text-gray-500 hover:bg-gray-100"}`}><Highlighter size={24} /></button>
+          <button onClick={() => handleToolClick("text")} className={`p-3 rounded-xl transition-all ${activeTool === "text" ? "bg-gray-200 text-gray-800 shadow-sm" : "text-gray-500 hover:bg-gray-100"}`}><Type size={24} /></button>
+          <button onClick={() => handleToolClick("shape")} className={`p-3 rounded-xl transition-all ${activeTool === "shape" ? "bg-emerald-100 text-emerald-600 shadow-sm" : "text-gray-500 hover:bg-gray-100"}`}><Square size={24} /></button>
+          
+          {mode === "edit" && <button onClick={() => handleToolClick("capture")} className={`p-3 rounded-xl transition-all ${activeTool === "capture" ? "bg-purple-100 text-purple-600 shadow-sm" : "text-gray-500 hover:bg-gray-100"}`}><Scissors size={24} /></button>}
+          
+          <div className="w-[1px] h-8 bg-gray-200 mx-1" />
+          
+          <button onClick={() => handleToolClick("eraser")} className={`p-3 rounded-xl transition-all ${activeTool === "eraser" ? "bg-gray-200 text-gray-800 shadow-sm" : "text-gray-500 hover:bg-gray-100"}`}><Eraser size={24} /></button>
+          
+          <div className="w-[1px] h-8 bg-gray-200 mx-1" />
+          
+          {/* ???ë¬¼??ê³ ì •/?´ì œ) ë²„íŠ¼ ì¶”ê? */}
+          <button 
+            onClick={() => setIsPinned(!isPinned)} 
+            className={`p-3 rounded-xl transition-all ${
+              isPinned ? "bg-gray-800 text-white shadow-sm" : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            }`}
+            title={isPinned ? "?´ë°” ê³ ì • ?´ì œ" : "?´ë°” ê³ ì •?˜ê¸°"}
+          >
+            {isPinned ? <Lock size={24} /> : <Unlock size={24} />}
+          </button>
+        </div>
+
+        {/* 3. ?¤ì • ?ì—… (?‰ìƒ, ?„í˜•, êµµê¸° ?? - ?´ë°”ê°€ ë³´ì¼ ?Œë§Œ ?Œë”ë§ë˜ê±°ë‚˜ ?„ì¹˜ ?´ë™ */}
+        {popoverOpen && (
+          <div className="mt-4 w-72 bg-white/95 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-2xl p-5 flex flex-col gap-6 animate-in fade-in slide-in-from-top-2">
+            
+            {/* ?„í˜• ëª¨ì–‘ ?¤ì • */}
+            {activeTool === "shape" && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-semibold text-gray-600">?„í˜• ëª¨ì–‘</span>
+                <div className="flex justify-between gap-2">
+                  <button onClick={() => setSelectedShape("line")} className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg border-2 transition-all ${selectedShape === "line" ? "bg-emerald-50 border-emerald-500 text-emerald-600 shadow-sm" : "border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100"}`}><Minus size={20} /> <span className="text-[10px] font-medium">ì§ì„ </span></button>
+                  <button onClick={() => setSelectedShape("rect")} className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg border-2 transition-all ${selectedShape === "rect" ? "bg-emerald-50 border-emerald-500 text-emerald-600 shadow-sm" : "border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100"}`}><Square size={20} /> <span className="text-[10px] font-medium">?¤ëª¨</span></button>
+                  <button onClick={() => setSelectedShape("circle")} className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg border-2 transition-all ${selectedShape === "circle" ? "bg-emerald-50 border-emerald-500 text-emerald-600 shadow-sm" : "border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100"}`}><Circle size={20} /> <span className="text-[10px] font-medium">?™ê·¸?¼ë?</span></button>
+                  <button onClick={() => setSelectedShape("triangle")} className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg border-2 transition-all ${selectedShape === "triangle" ? "bg-emerald-50 border-emerald-500 text-emerald-600 shadow-sm" : "border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100"}`}><Triangle size={20} /> <span className="text-[10px] font-medium">?¸ëª¨</span></button>
+                </div>
+              </div>
+            )}
+
+            {/* ?œì´‰ ?¤ì • */}
+            {activeTool === "pen" && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-semibold text-gray-600">?œì´‰</span>
+                <div className="flex justify-between gap-2">
+                  {PEN_TYPES.map((type) => (
+                    <button key={type.id} onClick={() => updateConfig({ style: type.id })} className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg border-2 transition-all ${penConfig.style === type.id ? "bg-blue-50 border-blue-500 text-blue-600 shadow-sm" : "border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>{type.icon}<span className="text-[10px] font-medium">{type.label}</span></button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* êµµê¸° ?¤ì • */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-center text-sm font-semibold text-gray-600"><span>êµµê¸°</span><span>{currentConfig.size}px</span></div>
+              <input type="range" min="1" max="50" value={currentConfig.size} onChange={(e) => updateConfig({ size: Number(e.target.value) })} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+            </div>
+
+            {/* ?‰ìƒ ?¤ì • (?„ë¦¬??+ ì»¬ëŸ¬?¼ì»¤) */}
+            <div className="flex flex-col gap-3 relative">
+              <span className="text-sm font-semibold text-gray-600">?‰ìƒ</span>
+              <div className="flex items-center gap-3">
+                {PRESET_COLORS.map((color) => (
+                  <button key={color} onClick={() => updateConfig({ color })} className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${currentConfig.color === color ? "border-gray-800 scale-110 shadow-md" : "border-transparent shadow-sm"}`} style={{ backgroundColor: color }} />
+                ))}
+                <button onClick={() => setShowColorPicker(!showColorPicker)} className="w-8 h-8 rounded-full border-2 border-gray-300 bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors"><Plus size={16} className="text-gray-600" /></button>
+              </div>
+              
+              {showColorPicker && (
+                <div className="absolute top-full mt-3 left-0 z-30 p-3 bg-white rounded-xl shadow-xl border border-gray-100">
+                  <div className="flex justify-between items-center mb-2"><span className="text-xs font-bold text-gray-500">ì»¤ìŠ¤?€ ?‰ìƒ</span><button onClick={() => setShowColorPicker(false)}><X size={14} className="text-gray-400 hover:text-gray-700" /></button></div>
+                  <HexColorPicker color={currentConfig.color} onChange={(color) => updateConfig({ color })} />
+                </div>
+              )}
+            </div>
+            
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default FloatingToolbar;
+
+
+====== W:\work\layboad\layboad\src\components\TeacherControlPanel.tsx ======
+
+// src/components/TeacherControlPanel.tsx
+import React from "react";
+import { BookOpen, Image as ImageIcon, Eye, EyeOff, Layers, Plus } from "lucide-react";
+import { RoomState } from "../types/board";
+import { Step } from "../hooks/useSteps";
+import { PageData } from "../hooks/usePagination";
+
+// ??ë©”ì¸ ?Œì¼(Whiteboard.tsx)?ì„œ ë°›ì•„???°ì´??ê·œê²©??
+export interface TeacherControlPanelProps {
+  mode: "edit" | "class"; // ???„ì¬ ëª¨ë“œ(ë°°ê²½?¸ì§‘ or ?˜ì—…) ë°›ì•„?¤ê¸° ì¶”ê?!
+  roomState: RoomState;
+  updateRoomState: (updates: Partial<RoomState>) => void;
+  currentPageIndex: number;
+  pages: PageData[];
+  setPages: React.Dispatch<React.SetStateAction<PageData[]>>;
+  activeStudents: string[];
+  steps: Step[];
+  setSteps: React.Dispatch<React.SetStateAction<Step[]>>;
+  activeStepId: string;
+  setActiveStepId: React.Dispatch<React.SetStateAction<string>>;
+  // ?š¨ updateStepOpacity???? œ?ˆìŠµ?ˆë‹¤! (?´ë??ì„œ setStepsë¡?ì§ì ‘ ì²˜ë¦¬)
+  emitSyncPages: (pages: PageData[]) => void; 
+  emitSyncSteps: (steps: Step[]) => void;     
+  bgOpacity: number;                     // ??ì¶”ê?
+  setBgOpacity: (val: number) => void;
+}
+
+const TeacherControlPanel = ({
+  mode,
+  roomState,
+  updateRoomState,
+  currentPageIndex,
+  pages,
+  setPages,
+  activeStudents,
+  steps,
+  setSteps,
+  activeStepId,
+  setActiveStepId,
+  emitSyncPages,
+  emitSyncSteps,
+  bgOpacity,        // ??ì¶”ê?
+  setBgOpacity
+}: TeacherControlPanelProps) => {
+
+  return (
+    <div className="absolute top-6 right-6 w-80 bg-white/95 backdrop-blur-md border border-gray-200 rounded-2xl shadow-2xl p-5 z-20 flex flex-col gap-6 max-h-[90vh] overflow-y-auto animate-in fade-in slide-in-from-right-4">
+      
+      {/* 1. ?˜ì—… ëª¨ë“œ */}
+      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+        <span className="font-bold text-gray-800 flex items-center gap-2"><BookOpen size={18} className="text-blue-600"/> ê°•ì œ ?˜ì—… ëª¨ë“œ</span>
+        <button 
+          onClick={() => updateRoomState({ isClassMode: !roomState.isClassMode, currentPageIndex: currentPageIndex })} 
+          className={`px-4 py-1.5 rounded-xl font-bold text-sm transition-all shadow-sm ${roomState.isClassMode ? "bg-red-500 text-white shadow-red-200" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+        >
+          {roomState.isClassMode ? "ON (?™ìƒ ê³ ì •)" : "OFF"}
+        </button>
+      </div>
+
+      {/* 2. ë°°ê²½ ?¤ì • (?¬ëª…?? */}
+      <div className="flex flex-col gap-3 border-b border-gray-200 pb-4">
+        <div className="flex justify-between text-sm font-semibold text-gray-700">
+          <span className="flex items-center gap-2"><ImageIcon size={16}/> ë°°ê²½ ?¬ëª…??/span>
+          <span className="text-blue-600">{Math.round((pages[currentPageIndex]?.background?.opacity ?? 1) * 100)}%</span>
+        </div>
+        <input 
+          type="range" min="0.1" max="1" step="0.1" 
+          value={bgOpacity}
+          onChange={(e) => setBgOpacity(parseFloat(e.target.value))}
+          className="w-full accent-blue-600"
+        />
+      </div>
+
+      {/* ???¸ì§‘ ëª¨ë“œê°€ ?„ë‹ ???˜ì—… ëª¨ë“œ????ë§??„ë˜ ?™ìƒ ?µì œ?€ ?€???¨ê³„ UI ?¸ì¶œ! */}
+      {mode !== "edit" && (
+        <>
+          {/* 3. ?™ìƒ ?„ê¸° ?µì œ */}
+          <div className="flex flex-col gap-3 border-b border-gray-200 pb-4">
+            <span className="text-sm font-bold text-gray-800 flex items-center gap-2">?‘¨?ğŸ??™ìƒ ?„ê¸° ?µì œ</span>
+            {activeStudents.length === 0 ? (
+              <span className="text-xs text-gray-400 text-center py-2">?„ì§ ?„ê¸°???™ìƒ???†ìŠµ?ˆë‹¤.</span>
+            ) : (
+              activeStudents.map((studentName) => {
+                const config = roomState.studentVisibilities[studentName] || { isVisible: true, opacity: 1 };
+                return (
+                  <div key={studentName} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+                    <span className="text-sm font-medium text-gray-700">{studentName}</span>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="range" min="0" max="1" step="0.1" value={config.opacity} 
+                        onChange={(e) => updateRoomState({ studentVisibilities: { ...roomState.studentVisibilities, [studentName]: { ...config, opacity: parseFloat(e.target.value) } } })} 
+                        className="w-16 accent-orange-500"
+                      />
+                      <button 
+                        onClick={() => updateRoomState({ studentVisibilities: { ...roomState.studentVisibilities, [studentName]: { ...config, isVisible: !config.isVisible } } })} 
+                        className="text-gray-400 hover:text-gray-700 transition-colors"
+                      >
+                        {config.isVisible ? <Eye size={18}/> : <EyeOff size={18}/>}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* 4. ?€???¨ê³„ (Step) ?µí•© ?œì–´ */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers size={18} className="text-blue-600" />
+                <h3 className="text-sm font-bold text-gray-800">?€???¨ê³„</h3>
+              </div>
+              <button 
+                onClick={() => {
+                  const newId = `step-${steps.length + 1}`;
+                  // ???µì‹¬ 1 ?˜ì •: ë°©ê¸ˆ ?„ê¹Œì§€ ?œì„±?”ë˜???ˆë˜(activeStepId) ?€?ë§Œ 0.2ë¡???¶”ê³? ?˜ë¨¸ì§€??ê·¸ë?ë¡??¡ë‹ˆ??
+                  const nextSteps = [
+                    ...steps.map(s => s.id === activeStepId ? { ...s, opacity: 0.2 } : s),
+                    { id: newId, name: `Step ${steps.length + 1}`, isVisible: true, opacity: 1 }
+                  ];
+                  setSteps(nextSteps);
+                  setActiveStepId(newId);
+                  emitSyncSteps(nextSteps);
+                }} 
+                className="flex items-center gap-1 bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+              >
+                <Plus size={14} /> ?¤ìŒ ?¨ê³„
+              </button>
+            </div>
+            <ul className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+              {steps.map((step) => (
+                <li 
+                  key={step.id} 
+                  onClick={() => {
+                    // ???µì‹¬ 2 ?˜ì •: ?´ë¦­?´ì„œ ?´ë™???Œë„ ?‘ê°™???ìš©?©ë‹ˆ??
+                    const nextSteps = steps.map((s) => {
+                      if (s.id === step.id) return { ...s, opacity: 1 }; // ?´ê? ?„ë¥¸ ê±?1.0?¼ë¡œ ì§„í•´ì§?
+                      if (s.id === activeStepId) return { ...s, opacity: 0.2 }; // ë°©ê¸ˆ ? ë‚˜??ê±?0.2ë¡??ë ¤ì§?
+                      return s; // ?˜ë¨¸ì§€???ê¸°ê°€ ?ë˜ ê°–ê³  ?ˆë˜ ?¬ëª…??ê·¸ë?ë¡?? ì?!
+                    });
+                    
+                    setSteps(nextSteps);
+                    setActiveStepId(step.id);
+                    emitSyncSteps(nextSteps);
+                  }} 
+                  className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer border transition-all ${step.id === activeStepId ? "bg-blue-50 border-blue-300 shadow-sm" : "bg-white border-gray-100 hover:bg-gray-50"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${step.id === activeStepId ? "bg-blue-500 animate-pulse" : "bg-gray-300"}`} />
+                    <span className={`text-sm font-medium ${step.id === activeStepId ? "text-blue-700" : "text-gray-600"}`}>{step.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="range" min="0.1" max="1" step="0.1" value={step.opacity ?? 1} 
+                      onClick={(e) => e.stopPropagation()} 
+                      onChange={(e) => {
+                        const newOpacity = parseFloat(e.target.value);
+                        
+                        // ???µì‹¬ ?˜ì •: ?„ì¬ ?˜ì´ì§€ë§?ë°”ê¾¸??ê²??„ë‹ˆ?? 'ëª¨ë“  ?˜ì´ì§€'???¬ëª…?„ë? ?¼ê´„ ë³€ê²½í•©?ˆë‹¤!
+                        const newPages = pages.map((page) => {
+                          // ë°°ê²½ ?°ì´?°ê? ?ˆëŠ” ?˜ì´ì§€?¼ë©´ ?„ë? ?¬ëª…?„ë? ??–´?Œì?
+                          if (page.background) {
+                            return { ...page, background: { ...page.background, opacity: newOpacity } };
+                          }
+                          return page;
+                        });
+            
+                        setPages(newPages);
+                        emitSyncPages(newPages); // ???™ìƒ???”ë©´?ë„ ëª¨ë“  ?˜ì´ì§€ ?¬ëª…?„ê? ??ë²ˆì— ?™ê¸°???„ë£Œ!
+                      }}
+                      className="w-12 accent-blue-600" 
+                    />
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        const nextSteps = steps.map((s) => s.id === step.id ? { ...s, isVisible: !s.isVisible } : s);
+                        setSteps(nextSteps);
+                        emitSyncSteps(nextSteps);
+                      }} 
+                      className="text-gray-400 hover:text-gray-700 transition-colors"
+                    >
+                      {step.isVisible ? <Eye size={18} /> : <EyeOff size={18} />}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
+
+    </div>
+  );
+};
+
+export default TeacherControlPanel;
+
+
+====== W:\work\layboad\layboad\src\components\Whiteboard.tsx ======
+
+"use client";
+import { supabase } from "@/lib/supabase";
+import { getRoomPages, saveRoomPages } from "@/lib/api/board";
+import React, { useEffect, useRef, useState } from "react";
+import * as fabric from "fabric";
+import { Loader2, Settings, BookOpen, RotateCw, Copy, Check, LogOut } from "lucide-react";
+
+// ?§© ë°©ê¸ˆ ë¶„ë¦¬?´ë‚¸ ?°ë¦¬???ˆê³  ë¸”ë¡(ì»´í¬?ŒíŠ¸)??ë¶ˆëŸ¬?¤ê¸°
+import FloatingToolbar from "./FloatingToolbar";
+import TeacherControlPanel from "./TeacherControlPanel";
+import BottomBar from "./BottomBar";
+
+// ??ë°??€??ë¶ˆëŸ¬?¤ê¸°
+import { useSteps } from "../hooks/useSteps"; 
+import { useBackgroundLoader } from "../hooks/useBackgroundLoader";
+import { usePerfectFreehand, BrushConfig, PenStyle } from "../hooks/usePerfectFreehand";
+import { useEraser } from "../hooks/useEraser";
+import { useBackgroundMode } from "../hooks/useBackgroundMode";
+import { useCapture } from "../hooks/useCapture";
+import { usePagination } from "../hooks/usePagination"; 
+import { useShape, ShapeType } from "../hooks/useShape";
+import { RoomState } from "../types/board";
+import { useRouter } from "next/navigation";
+
+interface WhiteboardProps {
+  roomId: string;
+  role: "teacher" | "student";
+  userName: string;
+}
+
+const Whiteboard = ({ roomId, role, userName }: WhiteboardProps) => {
+  const canvasEl = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
+
+  // ?› ï¸??´ë°” ë°?UI ?íƒœ
+  const [activeTool, setActiveTool] = useState<"select" | "pen" | "highlighter" | "eraser" | "text" | "capture" | "shape">("pen");
+  const [popoverOpen, setPopoverOpen] = useState<"pen" | "highlighter" | "shape" | null>(null);
+  const [selectedShape, setSelectedShape] = useState<ShapeType>("rect");
+  const [hasSelection, setHasSelection] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  // ?¨ ??ë°??•ê´‘???¤ì • ?íƒœ
+  const [penConfig, setPenConfig] = useState<{ color: string; size: number; style: PenStyle }>({ color: "#000000", size: 4, style: "fountain" });
+  const [highlighterConfig, setHighlighterConfig] = useState({ color: "#add8e6", size: 24 });
+  const [pdfFilePending, setPdfFilePending] = useState<File | null>(null);
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+
+  const currentConfig: BrushConfig = {
+    tool: activeTool === "highlighter" ? "highlighter" : "pen",
+    color: activeTool === "highlighter" ? highlighterConfig.color : penConfig.color,
+    size: activeTool === "highlighter" ? highlighterConfig.size : penConfig.size,
+    penStyle: activeTool === "pen" ? penConfig.style : undefined,
+  };
+
+  // ?“¦ ë¹„ì¦ˆ?ˆìŠ¤ ë¡œì§ ?…ë“¤ ?°ë™
+  const { steps, setSteps, activeStepId, setActiveStepId, updateStepOpacity } = useSteps(canvas);
+  const { pages, setPages, currentPageIndex, setCurrentPageIndex, changePage, nextPage, prevPage, deletePage } = usePagination(canvas, steps, setSteps, activeStepId, setActiveStepId);
+  const { handleFileUpload, isLoading } = useBackgroundLoader(canvas, pages, currentPageIndex, setPages, changePage);
+  const { mode, setMode, selectedImage } = useBackgroundMode(canvas);
+
+  // ?‘‘ ê¸€ë¡œë²Œ ë°??íƒœ ë°??™ìƒ ë¦¬ìŠ¤??
+  const [roomState, setRoomState] = useState<RoomState>({ isClassMode: false, currentPageIndex: 0, studentVisibilities: {} });
+  const [activeStudents, setActiveStudents] = useState<string[]>([]);
+  const [channel, setChannel] = useState<any>(null);
+  
+  const hasJoined = useRef(false);
+  const pagesRef = useRef(pages);
+  const currentPageIndexRef = useRef(currentPageIndex);
+  const [bgOpacity, setBgOpacity] = useState<number>(1);
+  // ?¯ 1. ì§€?°ê°œ ?ˆíŠ¸ë°•ìŠ¤(ì»¤ì„œ)ë¥??„í•œ ?íƒœ
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isHoveringCanvas, setIsHoveringCanvas] = useState(false);
+
+  // ?ª„ 2. ?¤í??¼ëŸ¬????S???? ë²„íŠ¼ ?„ì‹œ ?„í™˜???„í•œ Ref
+  const previousToolRef = useRef(activeTool);
+  const isStylusEraserActive = useRef(false);
+
+  useEffect(() => { pagesRef.current = pages; }, [pages]);
+  useEffect(() => { currentPageIndexRef.current = currentPageIndex; }, [currentPageIndex]);
+
+  // ?“ ?™ìƒ ë¦¬ìŠ¤???¤ìº”
+  const extractStudents = (currentCanvas: fabric.Canvas) => {
+    const students = new Set<string>();
+    currentCanvas.getObjects().forEach((obj: any) => {
+      if (obj.authorRole === "student" && obj.authorName) students.add(obj.authorName);
+    });
+    setActiveStudents(Array.from(students));
+  };
+
+  // ??? ìƒ?˜ì´ ?¤ì •??ë°”ê? ?Œë§ˆ???Œì¼“?¼ë¡œ ?˜ëŠ” ?µí•© ?¨ìˆ˜
+  const updateRoomState = (updates: Partial<RoomState>) => {
+    if (role !== "teacher" || !channel) return;
+    const newState = { ...roomState, ...updates };
+    setRoomState(newState);
+    
+    // ?Ÿ¢ ê°€ë²¼ìš´ ?™ê¸°?? socket.emit ?€??Broadcast!
+    channel.send({
+      type: "broadcast",
+      event: "update-room-state",
+      payload: newState
+    });
+  };
+  const [showCopyToast, setShowCopyToast] = useState(false);
+
+  // 3ï¸âƒ£ ?´ë¦½ë³´ë“œ ë³µì‚¬ ë°?? ìŠ¤???Œë¦¼ ?¨ìˆ˜
+  const handleCopyRoomId = async () => {
+    try {
+      await navigator.clipboard.writeText(roomId);
+      setShowCopyToast(true);
+      setTimeout(() => setShowCopyToast(false), 2000);
+    } catch (err) {
+      console.error("ë³µì‚¬???¤íŒ¨?ˆìŠµ?ˆë‹¤.", err);
+      alert("ë³µì‚¬???¤íŒ¨?ˆìŠµ?ˆë‹¤. ?¤ì‹œ ?œë„?´ì£¼?¸ìš”.");
+    }
+  };
+
+  const router = useRouter();
+
+  // ?Ÿ¢ ë°??˜ê?ê¸??¨ìˆ˜
+  const handleExit = () => {
+    const isConfirm = window.confirm(
+      role === "teacher" 
+        ? "?˜ì—…??ì¢…ë£Œ?˜ê³  ë°©ì—???˜ê??œê² ?µë‹ˆê¹?\n(?„ì¬ê¹Œì????´ìš©?€ ?ë™ ?€?¥ë©?ˆë‹¤.)" 
+        : "ë°©ì—???˜ê??œê² ?µë‹ˆê¹?"
+    );
+
+    if (isConfirm) {
+      // ? ìƒ?˜ì´ ?˜ê°ˆ ?ŒëŠ” 'ìµœí›„???ˆì „ë§?????ë²????˜ë™?¼ë¡œ ?‘ë™?œí‚´!
+      if (role === "teacher" && pagesRef.current && pagesRef.current.length > 0) {
+        saveRoomPages(roomId, pagesRef.current).catch(console.error);
+      }
+      
+      // ë©”ì¸ ?”ë©´(?ëŠ” ?€?œë³´???¼ë¡œ ?•ê²¨?´ê¸°
+      router.push("/dashboard"); // ?‘ˆ ë§Œì•½ ?Œì•„ê°??˜ì´ì§€ ì£¼ì†Œê°€ ?¤ë¥´ë©?"/" ë¶€ë¶„ì„ ?˜ì •??ì£¼ì„¸??
+    }
+  };
+
+  usePerfectFreehand(canvas, currentConfig, activeTool === "pen" || activeTool === "highlighter");
+  useEraser(canvas, activeTool === "eraser");
+  useCapture(canvas, activeTool === "capture", () => handleToolClick("select"));
+  useShape(canvas, activeTool === "shape", selectedShape, currentConfig.color, currentConfig.size, () => {});
+
+  useEffect(() => {
+    // ë§ˆìš°?????´ë™ ??ì¢Œí‘œ ?…ë°?´íŠ¸
+    const handlePointerMove = (e: PointerEvent) => {
+      if (activeTool === "eraser") {
+        setMousePos({ x: e.clientX, y: e.clientY });
+      }
+    };
+
+    // ??ë²„íŠ¼???„ë? ??(S??ì¸¡ë©´ ë²„íŠ¼?€ ë³´í†µ button: 2(?°í´ë¦?, ???·ë?ë¶?ì§€?°ê°œ??button: 5)
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "pen" && (e.button === 5 || e.button === 2 || e.buttons === 32)) {
+        // ?°í´ë¦?ë©”ë‰´ê°€ ?¨ëŠ” ê²ƒì„ ë°©ì?
+        e.preventDefault(); 
+        
+        // ?„ì¬ ?´ì„ ê¸°ì–µ?´ë‘ê³?ì§€?°ê°œë¡?ê°•ì œ ?„í™˜!
+        if (!isStylusEraserActive.current) {
+          previousToolRef.current = activeTool;
+          isStylusEraserActive.current = true;
+          setActiveTool("eraser");
+        }
+      }
+    };
+
+    // ?œì„ ?”ë©´?ì„œ ????(?ë˜ ?´ë¡œ ë³µê?)
+    const handlePointerUp = (e: PointerEvent) => {
+      if (isStylusEraserActive.current) {
+        isStylusEraserActive.current = false;
+        setActiveTool(previousToolRef.current);
+      }
+    };
+
+    // S??ì¸¡ë©´ ë²„íŠ¼ ?„ë? ??ë¸Œë¼?°ì? ?°í´ë¦?ë©”ë‰´ ì°¨ë‹¨
+    const handleContextMenu = (e: MouseEvent) => {
+      if (isStylusEraserActive.current) e.preventDefault();
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("contextmenu", handleContextMenu);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, [activeTool]);
+  // ?Œ ?Œì¼“ ?µì‹  (?ëµ ?†ì´ ?ë³¸ ? ì?)
+  useEffect(() => {
+    if (!canvas) return;
+  
+    // ?ŒŸ 1. [ë¬´ê±°???™ê¸°?? ë°??…ì¥ ??DB?ì„œ ê¸°ì¡´ ?„í™”ì§€ ??ë¶ˆëŸ¬?¤ê¸°
+    const loadInitialData = async () => {
+      try {
+        let targetPage = 0;
+        let savedState: any = null;
+        
+        if (role === "teacher") {
+          const savedStateStr = localStorage.getItem(`room_${roomId}_state`);
+          if (savedStateStr) {
+            try {
+              savedState = JSON.parse(savedStateStr);
+              if (typeof savedState.currentPageIndex === "number") {
+                targetPage = savedState.currentPageIndex;
+              }
+            } catch (e) { console.error("?íƒœ ë³µì› ?ëŸ¬:", e); }
+          }
+        }
+
+        const loadedPages = await getRoomPages(roomId);
+        if (loadedPages && loadedPages.length > 0) {
+          const formattedPages = loadedPages.map((p) => ({
+            json: p.canvas_json,
+            background: p.background,
+            steps: p.steps,
+            activeStepId: p.steps[p.steps.length - 1]?.id || "step-1"
+          }));
+          
+          setPages(formattedPages);
+
+          if (savedState) setRoomState(savedState);
+
+          if (targetPage >= formattedPages.length) targetPage = formattedPages.length - 1;
+          if (targetPage < 0) targetPage = 0;
+
+          await changePage(targetPage, formattedPages);
+        }
+      } catch (error) {
+        console.error("ì´ˆê¸° ?°ì´??ë¡œë“œ ?¤íŒ¨:", error);
+      } finally {
+        // ?š¨ [?µì‹¬ ?˜ì •] ?±ê³µ?˜ë“ , ?ëŸ¬ê°€ ?˜ë“ , ë°©ì´ ??ë¹„ì–´?ˆë“ 
+        // ë¡œë”© ?„ë¡œ?¸ìŠ¤ê°€ '?„ì „???ë‚¬?????Œë¦¬??? í˜¸??ì¼œê¸°!
+        setIsInitialLoadComplete(true);
+      }
+    };
+  
+    // 1ë²ˆë§Œ ?¤í–‰ (ì§€ê°ìƒ?´ë“  ? ìƒ?˜ì´???…ì¥ ??DB ?½ê¸°)
+    if (!hasJoined.current) {
+      loadInitialData();
+      hasJoined.current = true;
+    }
+  
+    // ?ŒŸ 2. [ê°€ë²¼ìš´ ?™ê¸°?? Supabase Realtime (Broadcast) ì±„ë„ ?Œê¸°
+    const roomChannel = supabase.channel(`room:${roomId}`, {
+      config: { broadcast: { self: false } } // ?´ê? ë³´ë‚¸ ê±??´ê? ?¤ì‹œ ë°›ì? ?ŠìŒ
+    });
+  
+    roomChannel
+      .on("broadcast", { event: "draw" }, (payload) => {
+        // ?¨ì´ ê·¸ë¦° ???¤ì‹œê°„ìœ¼ë¡?ê·¸ë¦¬ê¸?
+        const pathData = payload.payload;
+        fabric.util.enlivenObjects([pathData]).then((objects: any[]) => {
+          if (objects[0]) {
+            objects[0].set({ isRemote: true });
+            canvas.add(objects[0]);
+            extractStudents(canvas);
+            canvas.requestRenderAll();
+          }
+        });
+      })
+      .on("broadcast", { event: "update-room-state" }, (payload) => {
+        // ? ìƒ?˜ì´ ë°??íƒœ(?˜ì—…ëª¨ë“œ, ?˜ì´ì§€ ?´ë™ ?? ë°”ê¿¨????ê°•ì œ ?™ê¸°??
+        const newState = payload.payload;
+        setRoomState(newState);
+        if (role === "student" && newState.isClassMode && newState.currentPageIndex !== currentPageIndexRef.current) {
+          changePage(newState.currentPageIndex);
+        }
+      })
+      // ?ŒŸ ?µì‹¬ ?˜ì •: ?„ë²½?˜ê²Œ ?°ê²°?˜ì—ˆ???Œë§Œ ì±„ë„ ?íƒœë¥??¸íŒ…!
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log("?Ÿ¢ ?¤ì‹œê°?ê³ ì†?„ë¡œ ?°ê²° ?„ë£Œ!");
+          setChannel(roomChannel); 
+        }
+      });
+  
+    // ë°??˜ê°ˆ ??ì±„ë„ ?°ê²° ?Šê¸°
+    return () => {
+      supabase.removeChannel(roomChannel);
+    };
+  }, [canvas, roomId, role, userName]);
+
+  // ?? ë§ˆë²•???Œë”ë§??”ì§„ 
+  useEffect(() => {
+    if (!canvas) return;
+    canvas.getObjects().forEach((obj: any) => {
+      let isVisible = true;
+      let targetOpacity = obj.originalOpacity ?? obj.opacity ?? 1;
+
+      if (mode === "edit") {
+        if (obj.isBackground || obj.isBackgroundDrawing) {
+          isVisible = true;
+          if (obj.isBackground) targetOpacity = bgOpacity; 
+        } else {
+          isVisible = false; 
+        }
+      } else {
+        if (obj.isBackground || obj.isBackgroundDrawing) {
+          isVisible = true;
+          if (obj.isBackground) targetOpacity = bgOpacity;
+        } else {
+          isVisible = true;
+          if (obj.authorRole === "student" && obj.authorName && roomState.studentVisibilities[obj.authorName]) {
+            isVisible = isVisible && roomState.studentVisibilities[obj.authorName].isVisible;
+            targetOpacity *= roomState.studentVisibilities[obj.authorName].opacity;
+          }
+          if (obj.stepId) {
+            const stepConfig = steps.find(s => s.id === obj.stepId);
+            if (stepConfig) { 
+              isVisible = isVisible && stepConfig.isVisible; 
+              targetOpacity *= (stepConfig.opacity ?? 1);
+            }
+          }
+        }
+      }
+      obj.set({ visible: isVisible, opacity: targetOpacity });
+    });
+    canvas.requestRenderAll();
+  }, [canvas, roomState, steps, currentPageIndex, pages, activeStepId, mode, bgOpacity]);
+
+  // 1ï¸âƒ£ ìµœì´ˆ ìº”ë²„???ì„± ë¡œì§
+  useEffect(() => {
+    if (!canvasEl.current) return;
+    const newCanvas = new fabric.Canvas(canvasEl.current, { 
+      isDrawingMode: false, 
+      width: window.innerWidth, 
+      height: window.innerHeight, 
+      backgroundColor: "#ffffff", 
+      selection: false 
+    });
+    setCanvas(newCanvas);
+
+    return () => { 
+      newCanvas.dispose(); 
+      setCanvas(null); 
+    };
+  }, []);
+
+  // ??2ï¸âƒ£ ê¸°ê¸° ?Œì „(ë¦¬ì‚¬?´ì¦ˆ) ??ì»¨í…ì¸ ê? ?˜ë¦¬ì§€ ?Šê³  ??ë§ê²Œ ì¡°ì ˆ?˜ëŠ” ?¤í† ??Auto-Fit) ?”ì§„
+  useEffect(() => {
+    if (!canvas) return;
+
+    const handleResize = () => {
+      const newWidth = window.innerWidth;
+      const newHeight = window.innerHeight;
+      
+      // 1. ìº”ë²„??ê»ë°ê¸??¬ê¸°ë¥?ê¸°ê¸° ?”ë©´??ë§ì¶¤
+      canvas.setDimensions({ width: newWidth, height: newHeight });
+
+      // 2. ê·¸ë ¤ì§??´ìš©ë¬?ê°ì²´????ì§„ì§œ ë²”ìœ„ë¥?ê³„ì‚°
+      const objects = canvas.getObjects();
+      if (objects.length > 0) {
+        // ?•í™•??ë²”ìœ„ ê³„ì‚°???„í•´ ë·°í¬??Zoom/Pan)ë¥??„ì‹œë¡?ì´ˆê¸°??
+        const originalVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : null;
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        objects.forEach(obj => {
+          const br = obj.getBoundingRect(); // ?ˆë? ì¢Œí‘œ ê¸°ì?
+          minX = Math.min(minX, br.left);
+          minY = Math.min(minY, br.top);
+          maxX = Math.max(maxX, br.left + br.width);
+          maxY = Math.max(maxY, br.top + br.height);
+        });
+
+        const contentWidth = maxX - minX;
+        const contentHeight = maxY - minY;
+
+        // 3. ?”ë©´ ë°–ìœ¼ë¡??˜ê?ì§€ ?Šë„ë¡?ë¹„ìœ¨(Zoom) ê³„ì‚° (?¬ë°± 10% ?•ë„ ?•ë³´)
+        const scaleX = (newWidth * 0.9) / (contentWidth || newWidth);
+        const scaleY = (newHeight * 0.9) / (contentHeight || newHeight);
+        let zoom = Math.min(scaleX, scaleY);
+        if (zoom > 1) zoom = 1; // ?ë³¸ë³´ë‹¤ ì»¤ì?ì§€ ?Šê²Œ ë°©ì–´
+
+        // 4. ê³„ì‚°??ë°°ìœ¨(Zoom) ?ìš© ë°??œê??´ë°ë¡??´ë™(Pan)
+        canvas.setZoom(zoom);
+        const vpt = canvas.viewportTransform;
+        if (vpt) {
+          const centerX = (minX + maxX) / 2;
+          const centerY = (minY + maxY) / 2;
+          vpt[4] = (newWidth / 2) - (centerX * zoom);
+          vpt[5] = (newHeight / 2) - (centerY * zoom);
+        }
+      }
+      canvas.requestRenderAll();
+    };
+
+    // ë¸Œë¼?°ì?/ê¸°ê¸° ë¦¬ì‚¬?´ì¦ˆ ?´ë²¤???±ë¡
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [canvas]);
+
+  useEffect(() => {
+    if (!canvas) return;
+    const handleSelection = () => setHasSelection(canvas.getActiveObjects().length > 0);
+    canvas.on("selection:created", handleSelection); canvas.on("selection:updated", handleSelection); canvas.on("selection:cleared", handleSelection);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((canvas.getActiveObject() as any)?.isEditing || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "Delete" || e.key === "Backspace") deleteSelectedObjects();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => { canvas.off("selection:created", handleSelection); canvas.off("selection:updated", handleSelection); canvas.off("selection:cleared", handleSelection); window.removeEventListener("keydown", handleKeyDown); };
+  }, [canvas]);
+
+  useEffect(() => {
+    if (!canvas) return;
+    
+    const handleObjectAdded = (e: any) => {
+      const obj = e.target;
+      
+      // ?´ê? ë°©ê¸ˆ ì¶”ê???ê°ì²´(?¨ì´ ë³´ë‚¸ ê²??„ë‹˜)???Œë§Œ ?‘ë™
+      if (obj && !obj.isRemote && !obj.isBackground) {
+        
+        // 1. ê¸°ì¡´ ?ì„± ?¸íŒ…
+        if (obj.isBackgroundDrawing === undefined) {
+          const isBgMode = mode === "edit";
+          obj.set({
+            isBackgroundDrawing: isBgMode,
+            stepId: isBgMode ? undefined : activeStepId,
+            authorName: userName, // ?????´ë¦„??ë¶™ì´ê¸?
+            authorRole: role
+          });
+        }
+        
+        if (obj.isBackground || obj.isBackgroundDrawing) {
+          if (obj.isBackground) obj.set({ opacity: bgOpacity });
+        }
+
+        // ?? 2. ?¨ë“¤?ê²Œ ?¤ì‹œê°„ìœ¼ë¡??˜ê¸° (ê°€ë²¼ìš´ ?™ê¸°??
+        if (channel) {
+          const objData = obj.toJSON(["stepId", "originalOpacity", "selectable", "evented", "authorName", "authorRole", "isBackgroundDrawing"]);
+          channel.send({
+            type: "broadcast",
+            event: "draw",
+            payload: objData
+          });
+        }
+
+        // ?’¾ 3. ?„í™”ì§€ ?íƒœ ê°±ì‹ ?´ì„œ DB??ë°±ì—…?˜ê¸° (ë¬´ê±°???™ê¸°??
+        updateCurrentPageJson();
+      }
+    };
+    
+    canvas.on("object:added", handleObjectAdded);
+    return () => { canvas.off("object:added", handleObjectAdded); };
+  }, [canvas, mode, activeStepId, bgOpacity, channel, userName, role]);
+
+  useEffect(() => {
+    if (!canvas) return;
+
+    if (activeTool === "select") {
+      canvas.selection = true;
+      canvas.defaultCursor = "default";
+      canvas.centeredKey = null;
+
+      canvas.getObjects().forEach((obj: any) => {
+        if (mode === "edit") {
+           if (obj.isBackground || obj.isBackgroundDrawing) {
+              obj.set({ selectable: true, evented: true, hasControls: true });
+           } else {
+              obj.set({ selectable: false, evented: false, hasControls: false });
+           }
+        } else {
+           if (obj.type === "path" && !obj.isBackground && !obj.isBackgroundDrawing) {
+              obj.set({ selectable: true, evented: true, hasControls: true });
+           } else {
+              obj.set({ selectable: false, evented: false, hasControls: false });
+           }
+        }
+      });
+    } else {
+      canvas.selection = false;
+      canvas.getObjects().forEach((obj: any) => {
+         obj.set({ selectable: false, evented: false, hasControls: false });
+      });
+      canvas.discardActiveObject();
+    }
+
+    if (activeTool === "text") {
+      canvas.defaultCursor = "text";
+      const handleCanvasClick = (options: any) => {
+        if (options.target) return;
+        const pointer = options.scenePoint;
+        if (!pointer) return;
+
+        const text = new fabric.IText("?ìŠ¤???…ë ¥", {
+          left: pointer.x, top: pointer.y,
+          fontFamily: "Arial", fill: currentConfig.color, fontSize: 32,
+          stepId: activeStepId,
+        });
+        
+        canvas.add(text);
+        canvas.setActiveObject(text);
+        text.enterEditing();
+        text.selectAll(); 
+        setActiveTool("select"); 
+      };
+      
+      canvas.on("mouse:down", handleCanvasClick);
+      return () => { canvas.off("mouse:down", handleCanvasClick); };
+    }
+
+    canvas.requestRenderAll();
+  }, [canvas, activeTool, mode, currentConfig.color, activeStepId]);
+
+  const updateConfig = (updates: any) => {
+    if (["pen", "shape", "text"].includes(activeTool)) setPenConfig((prev) => ({ ...prev, ...updates }));
+    else if (activeTool === "highlighter") setHighlighterConfig((prev) => ({ ...prev, ...updates }));
+  };
+
+  const handleToolClick = (tool: any) => {
+    if (activeTool === tool && ["pen", "highlighter", "shape"].includes(tool)) { setPopoverOpen(popoverOpen === tool ? null : tool); setShowColorPicker(false); }
+    else { setActiveTool(tool); setPopoverOpen(tool === "shape" ? "shape" : null); }
+  };
+
+  const deleteSelectedObjects = React.useCallback(() => {
+    if (!canvas) return;
+    canvas.getActiveObjects().forEach((obj) => canvas.remove(obj));
+    canvas.discardActiveObject(); canvas.requestRenderAll(); setHasSelection(false); 
+    updateCurrentPageJson();
+  }, [canvas]);
+
+  // ??ë°°ê²½ ?¸ì§‘ ëª¨ë“œ?ì„œ '?¨ì¼ ?´ë?ì§€ ê°ì²´'ë¥?90?„ì”© ?Œì „?˜ëŠ” ê¸°ë³¸ ê¸°ëŠ¥(?´ë ¤??
+  const handleRotateImage = () => {
+    if (selectedImage && canvas) { selectedImage.set({ angle: (selectedImage.angle || 0) + 90 }); canvas.requestRenderAll(); }
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type === "application/pdf") setPdfFilePending(file); else handleFileUpload(file, "portrait");
+    e.target.value = '';
+  };
+
+  const updateCurrentPageJson = () => {
+    if (role !== "teacher" || !canvas) return;
+    
+    // ìº”ë²„?¤ì— ?ˆëŠ” ëª¨ë“  ?? ?? ?„í˜• ?°ì´?°ë? JSON?¼ë¡œ ë½‘ì•„?…ë‹ˆ??
+    const fullJson = canvas.toObject(["stepId", "originalOpacity", "selectable", "evented", "authorName", "authorRole", "isBackground", "isBackgroundDrawing"]);
+    
+    setPages((prevPages) => {
+      const nextPages = [...prevPages];
+      if (nextPages[currentPageIndexRef.current]) {
+        nextPages[currentPageIndexRef.current] = {
+          ...nextPages[currentPageIndexRef.current],
+          json: fullJson
+        };
+      }
+      return nextPages;
+    });
+  };
+
+  // ?Ÿ¢ 2. pages ?íƒœê°€ ë³€???Œë§ˆ??DB??ë°±ì—… (ê³¼ë???ë°©ì?ë¥??„í•´ 1ì´??œë ˆ???ìš©)
+  useEffect(() => {
+    if (role === "teacher" && pages.length > 0 && hasJoined.current) {
+      const saveTimer = setTimeout(() => {
+        saveRoomPages(roomId, pages).catch(console.error);
+        console.log("?’¾ DB ?ë™ ?€???„ë£Œ!");
+      }, 1000);
+      return () => clearTimeout(saveTimer);
+    }
+  }, [pages, roomId, role]);
+
+  useEffect(() => {
+    if (role !== "teacher") return;
+
+    const forceSave = () => {
+      // ?˜ì´ì§€???°ì´?°ê? ?˜ë‚˜?¼ë„ ?ˆë‹¤ë©?
+      if (pagesRef.current && pagesRef.current.length > 0) {
+        // ë¸Œë¼?°ì?ê°€ ?«íˆ??ì°°ë‚˜?´ë?ë¡? ê²°ê³¼ë¥?ê¸°ë‹¤ë¦?await) ?¬ìœ  ?†ì´ ë°”ë¡œ DBë¡??´ë²„ë¦½ë‹ˆ??
+        saveRoomPages(roomId, pagesRef.current).catch((err) => {
+          console.error("?ˆì „ë§??€???¤íŒ¨:", err);
+        });
+      }
+    };
+
+    // 1. ë¸Œë¼?°ì? ?ˆë¡œê³ ì¹¨(F5) ?´ë‚˜ ???«ê¸°ë¥??Œë?????ë°œë™
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      forceSave();
+    };
+
+    // 2. ?¤ë¥¸ ??œ¼ë¡??´ë™?˜ê±°??ë¸Œë¼?°ì?ë¥?ìµœì†Œ?”í–ˆ????ë°œë™ (ëª¨ë°”???˜ê²½?ì„œ ?¹íˆ ? ìš©)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        forceSave();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [roomId, role]);
+
+  useEffect(() => {
+    // ?š¨ [?µì‹¬ ?˜ì •] ì´ˆê¸° ë¡œë”©??"?„ë²½?˜ê²Œ ?ë‚œ(isInitialLoadComplete)" ?´í›„?ë§Œ ?€???ˆìš©!
+    if (role === "teacher" && isInitialLoadComplete) {
+      const stateToSave = { ...roomState, currentPageIndex };
+      localStorage.setItem(`room_${roomId}_state`, JSON.stringify(stateToSave));
+    }
+  }, [roomState, currentPageIndex, role, roomId, isInitialLoadComplete]);
+
+  // ?? 4. [?™ê¸°??ë³´ê°•] ? ìƒ?˜ì´ ?˜ë‹¨ ë°”ì—???˜ì´ì§€ë¥??˜ê²¼???? ?˜ì—… ëª¨ë“œ?¼ë©´ ?™ìƒ ?”ë©´???˜ê?!
+  const prevPageRef = useRef(currentPageIndex);
+  useEffect(() => {
+    if (role === "teacher" && prevPageRef.current !== currentPageIndex) {
+      prevPageRef.current = currentPageIndex;
+      // ? ìƒ?˜ì´ ?˜ì´ì§€ë¥??˜ê²¼?”ë° '?˜ì—… ëª¨ë“œ(?™ìƒ ?”ë©´ ê³ ì •)'ê°€ ì¼œì ¸ ?ˆë‹¤ë©?
+      if (roomState.isClassMode && channel) {
+        const newState = { ...roomState, currentPageIndex };
+        setRoomState(newState);
+        // ?™ìƒ?¤ì—ê²?"??3?˜ì´ì§€ë¡?ê°”ìœ¼???ˆí¬???¹ì¥ 3?˜ì´ì§€ë¡??°ë¼?€!" ?¼ê³  ë°©ì†¡
+        channel.send({
+          type: "broadcast",
+          event: "update-room-state",
+          payload: newState
+        });
+      }
+    }
+  }, [currentPageIndex, role, roomState, channel]);
+
+  return (
+    <div className="w-full h-screen overflow-hidden touch-none bg-gray-50 relative"
+      onPointerEnter={() => setIsHoveringCanvas(true)}
+      onPointerLeave={() => setIsHoveringCanvas(false)}
+      style={{ cursor: activeTool === "eraser" ? "none" : "auto" }}
+      >
+      {/* ?¯ 2. ë¡œë”©ì°?ë°”ë¡œ ?„ì—(?ëŠ” ?„ë˜?? ì§€?°ê°œ ?ˆíŠ¸ë°•ìŠ¤(ë¹¨ê°„ ?? UIë¥?ì¶”ê??©ë‹ˆ?? */}
+      {activeTool === "eraser" && isHoveringCanvas && (
+        <div
+          className="fixed pointer-events-none z-[99] rounded-full border-2 border-red-400 bg-red-400/20 backdrop-blur-[1px] transition-transform duration-75"
+          style={{
+            left: mousePos.x,
+            top: mousePos.y,
+            width: "40px",  /* ì§€?°ê°œ ?¬ê¸° */
+            height: "40px",
+            transform: "translate(-50%, -50%)", /* ì»¤ì„œ ì¤‘ì•™ ?•ë ¬ */
+          }}
+        />
+      )}
+      {isLoading && (
+        <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm animate-in fade-in">
+          <Loader2 size={48} className="text-blue-600 animate-spin mb-4" />
+          <h2 className="text-xl font-bold text-gray-800">êµì¬ë¥?ë¶„ì„?˜ê³  ?„í™”ì§€ë¡?ë§Œë“œ??ì¤?..</h2>
+        </div>
+      )}
+      
+      {/* ??ì°Œêº¼ê¸?ì»¨í…Œ?´ë„ˆ ?œê±° ?„ë£Œ - ê¹”ë”???œì • ?íƒœ */}
+      <div className="absolute inset-0 z-0">
+        <canvas ref={canvasEl} />
+      </div>
+
+      <div className="absolute top-6 left-6 flex w-[260px] bg-white/90 backdrop-blur-md p-1.5 rounded-2xl shadow-lg border border-gray-200 z-30">
+        <button onClick={() => setMode("edit")} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-all ${mode === "edit" ? "bg-orange-100 text-orange-600 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}><Settings size={18} /> ë°°ê²½ ?¸ì§‘</button>
+        <button onClick={() => setMode("class")} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-all ${mode === "class" ? "bg-blue-100 text-blue-600 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}><BookOpen size={18} /> ?˜ì—… ëª¨ë“œ</button>
+      </div>
+
+      {/* 2. ì´ˆë? ì½”ë“œ ë°•ìŠ¤ (?ˆë¹„ 260px, ê°„ê²© ì¡°ì •) */}
+      <div 
+        onClick={handleCopyRoomId}
+        className="absolute top-[84px] left-6 flex items-center justify-between w-[260px] bg-white/90 backdrop-blur-md p-3 px-4 rounded-2xl shadow-lg border border-gray-200 z-30 cursor-pointer hover:bg-white hover:border-blue-300 hover:shadow-xl transition-all group"
+      >
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-gray-400 mb-0.5 tracking-tight">INVITE CODE</span>
+          <span className="text-xl font-extrabold text-gray-800 tracking-[0.2em]">{roomId}</span>
+        </div>
+        <div className={`p-2 rounded-xl transition-all duration-300 ${showCopyToast ? 'bg-green-100 text-green-600 scale-110' : 'bg-gray-50 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600'}`}>
+          {showCopyToast ? <Check size={18} strokeWidth={3} /> : <Copy size={18} strokeWidth={2.5} />}
+        </div>
+      </div>
+
+      {/* 3. ë°??˜ê?ê¸?ë²„íŠ¼ (?ˆë¹„ 260px, ë¹¨ê°„??ê°•ì¡°) */}
+      <button
+        onClick={handleExit}
+        className="absolute top-[162px] left-6 flex items-center justify-center gap-2 w-[260px] py-3.5 bg-white/90 backdrop-blur-md rounded-2xl text-sm font-bold text-red-500 shadow-lg border border-red-100 hover:bg-red-50 hover:border-red-300 transition-all z-30 group"
+      >
+        <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+        <span>?˜ì—… ì¢…ë£Œ ë°??˜ê?ê¸?/span>
+      </button>
+
+      {/* 4. ë°°ê²½ 90???Œì „?˜ê¸° (?ˆë¹„ 260px, ?„ë˜ë¡????´ë¦¼) */}
+      {mode === "edit" && selectedImage && (
+        <div className="absolute top-[230px] left-6 w-[260px] bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-orange-200 z-30 animate-in fade-in zoom-in-95 duration-200">
+          <button onClick={handleRotateImage} className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl font-bold text-sm transition-colors active:scale-95"><RotateCw size={18} /> ë°°ê²½ 90???Œì „?˜ê¸°</button>
+        </div>
+      )}
+
+      {/* 5. ë³µì‚¬ ?„ë£Œ ? ìŠ¤???Œë¦¼ (?”ë©´ ?ë‹¨ ì¤‘ì•™) */}
+      {showCopyToast && (
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 px-5 py-3 bg-gray-800/95 backdrop-blur-sm text-white font-bold text-sm rounded-full shadow-2xl z-50 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
+          <Check size={18} className="text-green-400" />
+          ì´ˆë? ì½”ë“œê°€ ë³µì‚¬?˜ì—ˆ?µë‹ˆ??
+        </div>
+      )}
+
+      {role === "teacher" && (
+        <TeacherControlPanel 
+          mode={mode}
+          roomState={roomState} updateRoomState={updateRoomState}
+          currentPageIndex={currentPageIndex} pages={pages} setPages={setPages}
+          activeStudents={activeStudents}
+          steps={steps} setSteps={setSteps}
+          activeStepId={activeStepId} setActiveStepId={setActiveStepId}
+          emitSyncPages={(newPages) => saveRoomPages(roomId, newPages).catch(console.error)}
+          emitSyncSteps={(newSteps) => {
+            // stepsê°€ ë°”ë€Œë©´ ?„ì¬ ?˜ì´ì§€ ?•ë³´??ê°±ì‹ ?˜ë?ë¡?DB ?…ë°?´íŠ¸
+            const updatedPages = [...pages];
+            if (updatedPages[currentPageIndex]) {
+              updatedPages[currentPageIndex].steps = newSteps;
+              saveRoomPages(roomId, updatedPages).catch(console.error);
+            }
+          }}
+          bgOpacity={bgOpacity}
+          setBgOpacity={setBgOpacity}
+        />
+      )}
+
+      {/* ??FloatingToolbar???˜ê²¼???°ë ˆê¸?props ê¹”ë”?˜ê²Œ ?œê±° ?„ë£Œ */}
+      <FloatingToolbar 
+        activeTool={activeTool} handleToolClick={handleToolClick} hasSelection={hasSelection} deleteSelectedObjects={deleteSelectedObjects}
+        mode={mode} popoverOpen={popoverOpen} selectedShape={selectedShape} setSelectedShape={setSelectedShape}
+        penConfig={penConfig} currentConfig={currentConfig} updateConfig={updateConfig}
+        showColorPicker={showColorPicker} setShowColorPicker={setShowColorPicker}
+      />
+
+      <BottomBar 
+        currentPageIndex={currentPageIndex} totalPages={pages.length} prevPage={prevPage} nextPage={nextPage} deletePage={deletePage}
+        mode={mode} fileInputRef={fileInputRef} pdfFilePending={pdfFilePending} setPdfFilePending={setPdfFilePending} handleFileUpload={handleFileUpload}
+      />
+
+      <input type="file" ref={fileInputRef} onChange={onFileChange} accept="image/*,application/pdf" className="hidden" />
+    </div>
+  );
+};
+
+export default Whiteboard;
+
+
+====== W:\work\layboad\layboad\src\hooks\useBackgroundLoader.ts ======
+
+// src/hooks/useBackgroundLoader.ts (?„ì²´ ??–´?°ê¸°)
+import { useState } from "react";
+import * as fabric from "fabric";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import { PageData } from "./usePagination";
+
+if (typeof window !== "undefined") {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+}
+
+export const uploadFileToCloud = async (file: File): Promise<string> => {
+  return URL.createObjectURL(file);
+};
+
+// ?§  ë©”ëª¨ë¦???°œ ë°©ì?: ìµœë? 10?¥ê¹Œì§€ë§?ê¸°ì–µ?˜ëŠ” ì§€?¥í˜• ìºì‹œ (LRU ë°©ì‹)
+const MAX_CACHE_SIZE = 20;
+const pdfCache: Record<string, any> = {};
+const pageImageCache = new Map<string, string>(); 
+
+export const useBackgroundLoader = (
+  canvas: fabric.Canvas | null,
+  pages: PageData[],               // ?‘ˆ ì¶”ê?
+  currentPageIndex: number,        // ?‘ˆ ì¶”ê?
+  setPages: React.Dispatch<React.SetStateAction<PageData[]>>,
+  changePage: (index: number, overridePages?: PageData[]) => Promise<void>
+) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleFileUpload = async (file: File, orientation: "portrait" | "landscape" = "portrait") => {
+    if (!canvas) return;
+    setIsLoading(true);
+
+    try {
+      const cloudUrl = await uploadFileToCloud(file);
+      
+      // 1ï¸âƒ£ ë°”ê¹¥ìª½ì— let?¼ë¡œ ë¹?ë°°ì—´???˜ë‚˜ ë§Œë“¤??ì¤ë‹ˆ??
+      let newPages: PageData[] = [];
+
+      if (file.type === "application/pdf") {
+        const arrayBuffer = await file.arrayBuffer();
+        pdfCache[cloudUrl] = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pdf = pdfCache[cloudUrl];
+        
+        // 2ï¸âƒ£ ??ê¸°ì¡´???ˆë˜ const newPages: PageData[] = []; ??ì§€?ë‹ˆ??
+        for (let i = 1; i <= pdf.numPages; i++) {
+          // ë°”ê¹¥?ì„œ ë§Œë“  newPages??ë°€???£ìŠµ?ˆë‹¤.
+          newPages.push({
+            json: null,
+            background: { type: "pdf", url: cloudUrl, pdfPageNumber: i, opacity: 1, orientation },
+            steps: [{ id: "step-1", name: "Step 1", isVisible: true, opacity: 1 }],
+            activeStepId: "step-1"
+          });
+        }
+        // ??ê¸°ì¡´???ˆë˜ await changePage(0, newPages); ?? œ ?„ë£Œ!
+      } 
+      else if (file.type.startsWith("image/")) {
+        // 3ï¸âƒ£ ???¬ê¸°??const?€ : PageData[] ë¥?ì§€?°ê³  ë°”ë¡œ ë°°ì—´????–´?Œì›?ˆë‹¤.
+        newPages = [{
+          json: null,
+          background: { type: "image", url: cloudUrl, opacity: 1, orientation },
+          steps: [{ id: "step-1", name: "Step 1", isVisible: true, opacity: 1 }],
+          activeStepId: "step-1"
+        }];
+        // ??ê¸°ì¡´???ˆë˜ await changePage(0, newPages); ?? œ ?„ë£Œ!
+      }
+
+      // 4ï¸âƒ£ ë§ˆì?ë§‰ì— ?¬ê¸°????ë°©ì— ì²˜ë¦¬?©ë‹ˆ?? (?„ì¬ ?˜ì´ì§€ ?¤ì— ?¼ì›Œ?£ê¸°)
+      if (newPages.length > 0) {
+        if (pages && pages.length > 0) {
+          const updatedPages = [...pages];
+          updatedPages.splice(currentPageIndex + 1, 0, ...newPages); 
+          await changePage(currentPageIndex + 1, updatedPages);
+        } else {
+          // ê¸°ì¡´ ?„í™”ì§€ê°€ ?˜ë‚˜???†ìœ¼ë©?0ë²ˆì§¸ë¶€????–´?°ê¸°
+          await changePage(0, newPages);
+        }
+      }
+    } catch (error) {
+      console.error("?Œì¼ ë¡œë“œ ?ëŸ¬:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { handleFileUpload, isLoading };
+};
+
+// ?? ê¹œë¹¡??ë°©ì????µì‹¬! ?”ë©´??ì§€?°ê¸° ?„ì— ë©”ëª¨ë¦??ˆì—???´ë?ì§€ë¥?ë¨¼ì? '?„ì„±'???¡ë‹ˆ??
+export const prepareBackgroundImage = async (background: any): Promise<fabric.Image | null> => {
+  if (!background || !background.url || background.type === "none") return null;
+
+  // ???ëŸ¬ ?ì¸ ?´ê²°: ë¬´ì¡°ê±?ë¬¸ì??string)???¤ì–´ê°€?„ë¡ ì´ˆê¸°ê°’ì„ ?•ì‹¤?˜ê²Œ ?¸íŒ…!
+  let dataUrl: string = ""; 
+  const cacheKey = `${background.url}_${background.pdfPageNumber}`;
+
+  try {
+    if (background.type === "pdf") {
+      const cachedUrl = pageImageCache.get(cacheKey);
+
+      // 1. ?´ë? ìºì‹œ???ˆìœ¼ë©?0ì´?ë§Œì— ë°”ë¡œ êº¼ë‚´?µë‹ˆ??
+      if (cachedUrl) {
+        dataUrl = cachedUrl;
+        // ?´ë? ?ˆìœ¼ë©??°ì„ ?œìœ„ë¥??œì¼ ìµœê·¼?¼ë¡œ ê°±ì‹ !
+        pageImageCache.delete(cacheKey);
+        pageImageCache.set(cacheKey, dataUrl);
+      } 
+      // 2. ìºì‹œ???†ìœ¼ë©??ˆë¡œ ê·¸ë¦½?ˆë‹¤.
+      else {
+        if (!pdfCache[background.url]) {
+          pdfCache[background.url] = await pdfjsLib.getDocument({ url: background.url }).promise;
+        }
+        const pdf = pdfCache[background.url];
+        const page = await pdf.getPage(background.pdfPageNumber);
+        const viewport = page.getViewport({ scale: 2.0 });
+
+        const htmlCanvas = document.createElement("canvas");
+        htmlCanvas.width = viewport.width; htmlCanvas.height = viewport.height;
+        const ctx = htmlCanvas.getContext("2d");
+
+        if (ctx) {
+          await page.render({ canvasContext: ctx, viewport } as any).promise;
+          dataUrl = htmlCanvas.toDataURL("image/png");
+
+          // ??20?¥ì„ ì´ˆê³¼?˜ë©´ ?œì¼ ?›ë‚  ?´ë?ì§€ë¥??? œ?´ì„œ ë©”ëª¨ë¦?ë°©ì–´!
+          pageImageCache.set(cacheKey, dataUrl);
+          if (pageImageCache.size > MAX_CACHE_SIZE) {
+            const firstKey = pageImageCache.keys().next().value;
+            if (firstKey) pageImageCache.delete(firstKey);
+          }
+        }
+        htmlCanvas.width = 0; htmlCanvas.height = 0; // ì¦‰ì‹œ ?´ì???
+      }
+    } else if (background.type === "image") {
+      dataUrl = background.url;
+    }
+
+    // ???„ë²½??ë¬¸ì??string) ?íƒœ?ì„œë§??´ë?ì§€ë¥??ì„±!
+    if (dataUrl !== "") {
+      const img = await fabric.Image.fromURL(dataUrl);
+      const orientation = background.orientation || "portrait";
+      const scale = Math.min(
+        window.innerWidth / (orientation === "landscape" ? img.height! : img.width!),
+        window.innerHeight / (orientation === "landscape" ? img.width! : img.height!)
+      );
+      if (orientation === "landscape") img.set({ angle: -90 });
+      img.scale(scale * 0.98);
+
+      img.set({
+        left: window.innerWidth / 2, top: window.innerHeight / 2,
+        originX: "center", originY: "center",
+        selectable: false, evented: false,
+        opacity: background.opacity || 1,
+        isBackground: true // ?„ìˆ˜ ê¼¬ë¦¬??
+      } as any);
+
+      return img;
+    }
+  } catch (error) {
+    console.error("ë°°ê²½ ì¤€ë¹??¤íŒ¨:", error);
+  }
+  return null;
+};
+
+
+====== W:\work\layboad\layboad\src\hooks\useBackgroundMode.ts ======
+
+import { useState, useEffect } from "react";
+import * as fabric from "fabric";
+
+export type BoardMode = "edit" | "class";
+
+export const useBackgroundMode = (canvas: fabric.Canvas | null) => {
+  const [mode, setMode] = useState<BoardMode>("class");
+  const [selectedImage, setSelectedImage] = useState<fabric.Image | null>(null);
+
+  useEffect(() => {
+    if (!canvas) return;
+
+    // ëª¨ë“œ ë³€ê²???ê°ì²´ ?íƒœ ?…ë°?´íŠ¸
+    const updateObjects = () => {
+      canvas.getObjects().forEach((obj) => {
+        // ?´ë?ì§€(êµì¬) ê°ì²´??ê²½ìš°
+        if (obj instanceof fabric.Image) {
+          if (mode === "edit") {
+            // ë°°ê²½ ?¸ì§‘ ëª¨ë“œ: ? íƒ ë°??´ë™ ê°€??
+            obj.set({
+              selectable: true,
+              evented: true,
+              hasControls: true,
+              lockMovementX: false,
+              lockMovementY: false,
+              hoverCursor: "move",
+            });
+          } else {
+            // ?˜ì—… ëª¨ë“œ: ?„ë²½ ? ê¸ˆ
+            obj.set({
+              selectable: false,
+              evented: false,
+              hasControls: false,
+              lockMovementX: true,
+              lockMovementY: true,
+              hoverCursor: "default",
+            });
+          }
+        }
+      });
+      canvas.discardActiveObject(); // ? íƒ ?´ì œ
+      canvas.requestRenderAll();
+    };
+
+    updateObjects();
+
+    // ?´ë?ì§€ ? íƒ ?´ë²¤??ê°ì? (?¸ì§‘ ëª¨ë“œ?ì„œ ?¬ëª…??ì¡°ì ˆ??
+    const handleSelection = () => {
+      const activeObj = canvas.getActiveObject();
+      if (activeObj instanceof fabric.Image && mode === "edit") {
+        setSelectedImage(activeObj);
+      } else {
+        setSelectedImage(null);
+      }
+    };
+
+    canvas.on("selection:created", handleSelection);
+    canvas.on("selection:updated", handleSelection);
+    canvas.on("selection:cleared", handleSelection);
+
+    return () => {
+      canvas.off("selection:created", handleSelection);
+      canvas.off("selection:updated", handleSelection);
+      canvas.off("selection:cleared", handleSelection);
+    };
+  }, [canvas, mode]);
+
+  // ?´ë?ì§€ ?¬ëª…??ì¡°ì ˆ ?¨ìˆ˜
+  const updateOpacity = (val: number) => {
+    if (selectedImage && canvas) {
+      selectedImage.set("opacity", val);
+      canvas.requestRenderAll();
+    }
+  };
+
+  return { mode, setMode, selectedImage, updateOpacity };
+};
+
+
+====== W:\work\layboad\layboad\src\hooks\useCapture.ts ======
+
+import { useEffect, useRef } from "react";
+import * as fabric from "fabric";
+
+export const useCapture = (canvas: fabric.Canvas | null, isActive: boolean, onCaptured: () => void) => {
+  const isDrawingRect = useRef(false);
+  const rectRef = useRef<fabric.Rect | null>(null);
+  const startPoint = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    // ?´ì´ ë¹„í™œ?±í™”?˜ë©´ ì¼œì ¸ ?ˆë˜ ?Œë???ë°•ìŠ¤ ì§€?°ê¸°
+    if (!canvas || !isActive) {
+      if (rectRef.current) {
+        canvas?.remove(rectRef.current);
+        rectRef.current = null;
+      }
+      return;
+    }
+
+    canvas.isDrawingMode = false;
+    canvas.selection = false;
+    canvas.defaultCursor = "crosshair"; // ìº¡ì²˜???? ì»¤ì„œ
+
+    const handleMouseDown = (o: fabric.TPointerEventInfo) => {
+        if (o.e instanceof MouseEvent && o.e.button !== 0) return;
+        const scenePoint = o.scenePoint;
+        if (!scenePoint) return;
+  
+        if (rectRef.current) canvas.remove(rectRef.current);
+  
+        isDrawingRect.current = true;
+        startPoint.current = scenePoint;
+  
+        rectRef.current = new fabric.Rect({
+          left: scenePoint.x,
+          top: scenePoint.y,
+          width: 0,
+          height: 0,
+          originX: "left", // ??ë§ˆìš°???´ë¦­??ê³³ì„ ë¬´ì¡°ê±?ì¢Œì¸¡/?ë‹¨ ê³ ì •!
+          originY: "top",  // ??(ì¤‘ì‹¬ë¶€??ì»¤ì????„ìƒ ?„ë²½ ?´ê²°)
+          fill: "rgba(59, 130, 246, 0.2)",
+          stroke: "#3b82f6",
+          strokeWidth: 2,
+          strokeDashArray: [5, 5],
+          selectable: false,
+          evented: false,
+        });
+        canvas.add(rectRef.current);
+      };
+
+    const handleMouseMove = (o: fabric.TPointerEventInfo) => {
+      if (!isDrawingRect.current || !rectRef.current || !startPoint.current) return;
+      const scenePoint = o.scenePoint;
+      if (!scenePoint) return;
+
+      // ë§ˆìš°??ë°©í–¥???ê??†ì´ ?¬ë°”ë¥??“ì´/?’ì´ ê³„ì‚°
+      const x = Math.min(scenePoint.x, startPoint.current.x);
+      const y = Math.min(scenePoint.y, startPoint.current.y);
+      const w = Math.abs(scenePoint.x - startPoint.current.x);
+      const h = Math.abs(scenePoint.y - startPoint.current.y);
+
+      rectRef.current.set({ left: x, top: y, width: w, height: h });
+      canvas.requestRenderAll();
+    };
+
+    const handleMouseUp = async () => {
+      isDrawingRect.current = false;
+      if (!rectRef.current) return;
+
+      const rect = rectRef.current;
+      const { left, top, width, height } = rect;
+
+      // ìº¡ì²˜ ?”ë©´???Œë? ë°•ìŠ¤ê°€ ì°íˆì§€ ?Šë„ë¡?ë¨¼ì? ì§€?ë‹ˆ??
+      canvas.remove(rect);
+      rectRef.current = null;
+
+      // ?ì—­???ˆë¬´ ?‘ìœ¼ë©??´ë¦­ ?¤ìˆ˜) ìº¡ì²˜ ë¬´ì‹œ
+      if (width !== undefined && height !== undefined && Math.max(width, height) > 10) {
+        try {
+          // ?”ë©´?ì„œ ?´ë‹¹ ?ì—­ë§??´ë?ì§€(Base64)ë¡?ì¶”ì¶œ (?”ì§ˆ???„í•´ multiplier x2 ?ìš©)
+          const dataUrl = canvas.toDataURL({
+            left,
+            top,
+            width,
+            height,
+            format: "png",
+            multiplier: 2, 
+          });
+
+          // ì¶”ì¶œ???´ë?ì§€ë¥??ˆë¡œ??Fabric ê°ì²´ë¡?ë¶ˆëŸ¬?µë‹ˆ??
+          const img = await fabric.Image.fromURL(dataUrl);
+
+          // ?´ì§ ?°ì¸¡ ?˜ë‹¨?¼ë¡œ ?´ê¸‹?˜ê²Œ ë°°ì¹˜?˜ê³  ì¡°ê¸ˆ ?¤ì›Œì¤?(?ì—… ?¨ê³¼)
+          img.set({
+            left: left! + 10, // ?ë³¸ ?„ì¹˜?ì„œ ?°ì¸¡ ?˜ë‹¨?¼ë¡œ ?´ì§(10px)ë§??´ê¸‹?˜ê²Œ ë°°ì¹˜ (ë³µì‚¬??ê±??¸ì??˜ë„ë¡?
+            top: top! + 10,
+            scaleX: 0.5, // ?ŒŸ ?µì‹¬: 2ë°°ë¡œ ë»¥í?ê¸°ëœ ?¬ì§„???¬ê¸°ë§?0.5ë°°ë¡œ ì¤„ì—¬???œë˜ê·¸í•œ ?ë³¸ ?¬ì´ì¦ˆì? 100% ?¼ì¹˜?œí‚´!
+            scaleY: 0.5,
+            originX: "left", // ì¤‘ì‹¬ì¶•ì„ ?¼ìª½ ?„ë¡œ ?•ìƒ??
+            originY: "top",
+            cornerColor: "#3b82f6",
+            borderColor: "#3b82f6",
+            cornerSize: 12,
+            transparentCorners: false,
+            isCapture: true,
+          });
+
+          canvas.add(img);
+          canvas.setActiveObject(img);
+          canvas.requestRenderAll();
+
+          // ìº¡ì²˜ ?„ë£Œ ??ë°”ë¡œ ?¬ê¸°ë¥?ì¡°ì ˆ?????ˆê²Œ '? íƒ' ?´ë¡œ ?ë™ ?„í™˜
+          onCaptured();
+        } catch (error) {
+          console.error("ìº¡ì²˜ ?¤íŒ¨:", error);
+        }
+      }
+    };
+
+    canvas.on("mouse:down", handleMouseDown);
+    canvas.on("mouse:move", handleMouseMove);
+    canvas.on("mouse:up", handleMouseUp);
+
+    return () => {
+      canvas.off("mouse:down", handleMouseDown);
+      canvas.off("mouse:move", handleMouseMove);
+      canvas.off("mouse:up", handleMouseUp);
+      canvas.defaultCursor = "default";
+    };
+  }, [canvas, isActive, onCaptured]);
+};
+
+
+====== W:\work\layboad\layboad\src\hooks\useEraser.ts ======
+
+import { useEffect, useRef } from "react";
+import * as fabric from "fabric";
+
+export const useEraser = (canvas: fabric.Canvas | null, isActive: boolean) => {
+  const isErasing = useRef(false);
+
+  useEffect(() => {
+    // ìº”ë²„?¤ê? ?†ê±°??ì§€?°ê°œ ?´ì´ ?„ë‹ˆë©??´ë²¤??ì¢…ë£Œ
+    if (!canvas || !isActive) return;
+
+    // ê·¸ë¦¬ê¸?ëª¨ë“œ ?´ì œ ë°?????ì»¤ì„œ ?ìš©
+    canvas.isDrawingMode = false;
+    canvas.selection = false;
+    canvas.defaultCursor = "crosshair";
+
+    // ?”´ ??ì§€?°ê°œ ?µì‹¬ ë¡œì§
+    const eraseStroke = (options: fabric.TPointerEventInfo) => {
+      const pointer = options.scenePoint;
+      if (!pointer) return;
+
+      const objects = canvas.getObjects();
+      
+      // ë§??„ì— ??¸(ìµœê·¼??ê·¸ë¦°) ê°ì²´ë¶€??ì²´í¬?˜ê¸° ?„í•´ ë°°ì—´????ˆœ?¼ë¡œ ?œíšŒ?©ë‹ˆ??
+      for (let i = objects.length - 1; i >= 0; i--) {
+        const obj = objects[i] as any;
+        
+        // ??ì¡°ê±´: ?°ë¦¬ê°€ ê·¸ë¦° ?„ê¸°(stepId ì¡´ì¬)?´ê³ , ë§ˆìš°???¬ì¸?°ê? ê°ì²´ ?ì—­???¿ì•˜?”ê??
+        // (ë°°ê²½ ?´ë?ì§€??PDF??stepIdê°€ ?†ìœ¼ë¯€ë¡??ˆë? ì§€?Œì?ì§€ ?ŠìŠµ?ˆë‹¤!)
+        if (obj.stepId && obj.containsPoint(pointer)) {
+          canvas.remove(obj);
+          canvas.requestRenderAll();
+          break; // ??ë²ˆì— ?˜ë‚˜???ì—°?¤ëŸ½ê²?ì§€?Œì??„ë¡ ë°˜ë³µë¬??ˆì¶œ
+        }
+      }
+    };
+
+    const handleMouseDown = (options: fabric.TPointerEventInfo) => {
+      isErasing.current = true;
+      eraseStroke(options);
+    };
+
+    const handleMouseMove = (options: fabric.TPointerEventInfo) => {
+      if (isErasing.current) {
+        eraseStroke(options);
+      }
+    };
+
+    const handleMouseUp = () => {
+      isErasing.current = false;
+    };
+
+    // ?´ë²¤???±ë¡
+    canvas.on("mouse:down", handleMouseDown);
+    canvas.on("mouse:move", handleMouseMove);
+    canvas.on("mouse:up", handleMouseUp);
+
+    return () => {
+      // ?´ë¦°??
+      canvas.off("mouse:down", handleMouseDown);
+      canvas.off("mouse:move", handleMouseMove);
+      canvas.off("mouse:up", handleMouseUp);
+      canvas.defaultCursor = "default";
+    };
+  }, [canvas, isActive]);
+};
+
+
+====== W:\work\layboad\layboad\src\hooks\usePagination.ts ======
+
+// src/hooks/usePagination.ts (?„ì²´ ??–´?°ê¸°)
+import { useState, useRef, useEffect } from "react";
+import * as fabric from "fabric";
+import { Step } from "./useSteps";
+import { prepareBackgroundImage } from "./useBackgroundLoader";
+
+export interface PageData {
+  json: any;
+  background?: {
+    type: "pdf" | "image" | "none";
+    url: string | null;
+    pdfPageNumber?: number;
+    opacity: number;
+    orientation?: "portrait" | "landscape";
+    drawingsJson?: any;
+  };
+  steps: Step[];
+  activeStepId: string;
+}
+
+export const usePagination = (
+  canvas: fabric.Canvas | null, steps: Step[], setSteps: React.Dispatch<React.SetStateAction<Step[]>>,
+  activeStepId: string, setActiveStepId: React.Dispatch<React.SetStateAction<string>>
+) => {
+  const [pages, setPages] = useState<PageData[]>([]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const isNavigating = useRef(false);
+
+  const stepsRef = useRef(steps); const activeStepIdRef = useRef(activeStepId); const pagesRef = useRef(pages);
+  useEffect(() => { stepsRef.current = steps; }, [steps]); useEffect(() => { activeStepIdRef.current = activeStepId; }, [activeStepId]); useEffect(() => { pagesRef.current = pages; }, [pages]);
+  useEffect(() => { if (pages.length === 0) setPages([{ json: null, background: { type: "none", url: null, opacity: 1 }, steps: stepsRef.current, activeStepId: activeStepIdRef.current }]); }, [pages.length]);
+
+  const changePage = async (newIndex: number, overridePages?: PageData[]) => {
+    if (!canvas || isNavigating.current) return;
+    isNavigating.current = true;
+
+    try {
+      const fullJson = canvas.toObject([
+        "stepId", "originalOpacity", "erasable", "selectable", "evented", "hasControls", "lockMovementX", "lockMovementY",
+        "authorName", "authorRole", "isRemote", "isCapture", "isBackground", "isBackgroundDrawing"
+      ]);
+
+      const bgDrawings = fullJson.objects.filter((obj: any) => obj.isBackgroundDrawing);
+      const fgDrawings = fullJson.objects.filter((obj: any) => !obj.isBackgroundDrawing && !obj.isBackground);
+
+      let updatedPages = overridePages ? [...overridePages] : [...pagesRef.current];
+
+      if (!overridePages && updatedPages[currentPageIndex]) {
+        const currentBackground = {
+          ...(updatedPages[currentPageIndex]?.background || { type: "none", url: null, opacity: 1 }),
+          drawingsJson: { ...fullJson, objects: bgDrawings }
+        };
+        updatedPages[currentPageIndex] = {
+          json: { ...fullJson, objects: fgDrawings },
+          background: currentBackground,
+          steps: stepsRef.current,
+          activeStepId: activeStepIdRef.current
+        };
+      }
+
+      let targetPage = updatedPages[newIndex];
+      if (!targetPage) {
+        targetPage = { json: null, background: { type: "none", url: null, opacity: 1 }, steps: [{ id: "step-1", name: "Step 1", isVisible: true, opacity: 1 }], activeStepId: "step-1" };
+        updatedPages[newIndex] = targetPage;
+      }
+
+      setPages(updatedPages); setCurrentPageIndex(newIndex); setSteps(targetPage.steps); setActiveStepId(targetPage.activeStepId);
+
+      // ?š¨ [ë§ˆë²• 2]: ?´ì „ ?”ë©´??ë³´ì—¬ì£¼ë©´???¤ìŒ ë°°ê²½ ?´ë?ì§€ë¥?ì¡°ìš©???„ì„±???¡ë‹ˆ??
+      let bgImage = null;
+      if (targetPage.background) {
+        bgImage = await prepareBackgroundImage(targetPage.background);
+      }
+
+      // ?š¨ ì¡°ë¦½???ë‚˜ë©? ê·¸ì œ?œì•¼ ?”ë©´??ë¹„ìš°ê³??¨ìˆ¨???¹ìŠµ?ˆë‹¤. (?˜ì? ?”ë©´ ê¹œë¹¡???œê±°)
+      canvas.clear();
+      canvas.backgroundColor = "#ffffff";
+
+      let objectsToLoad: any[] = [];
+      if (targetPage.background?.drawingsJson?.objects) objectsToLoad.push(...targetPage.background.drawingsJson.objects);
+      if (targetPage.json?.objects) objectsToLoad.push(...targetPage.json.objects);
+
+      if (objectsToLoad.length > 0) {
+        const mergedJson = { version: targetPage.json?.version || "5.3.0", objects: objectsToLoad };
+        await canvas.loadFromJSON(mergedJson);
+      }
+
+      // ì¤€ë¹„ëœ ë°°ê²½(bgImage)??ìº”ë²„??ë§?ë°‘ìœ¼ë¡?ë°€???£ê¸°
+      if (bgImage) {
+        canvas.add(bgImage);
+        canvas.sendObjectToBack(bgImage);
+      }
+
+      canvas.requestRenderAll();
+      (canvas as any).fire("canvas:reloaded");
+
+      // ?? [ë§ˆë²• 3]: ?”ë©´???¨ìë§ˆì ?¬ìš©?ê? ?˜ì–´ê°??•ë¥ ???’ì? ?ë’¤ 1?¥ì„ ?¤ì—??ë¯¸ë¦¬ ê·¸ë ¤??ìºì‹œ???£ìŠµ?ˆë‹¤!
+      setTimeout(() => {
+        if (updatedPages[newIndex + 1]?.background) prepareBackgroundImage(updatedPages[newIndex + 1].background);
+        if (updatedPages[newIndex - 1]?.background) prepareBackgroundImage(updatedPages[newIndex - 1].background);
+      }, 300);
+
+    } finally {
+      isNavigating.current = false;
+    }
+  };
+
+  const nextPage = () => changePage(currentPageIndex + 1);
+  const prevPage = () => { if (currentPageIndex > 0) changePage(currentPageIndex - 1); };
+  const deletePage = async () => {
+    if (!canvas || isNavigating.current) return;
+    if (pagesRef.current.length <= 1) { alert("ë§ˆì?ë§??¨ì? ?˜ì´ì§€???? œ?????†ìŠµ?ˆë‹¤."); return; }
+    if (confirm("?„ì¬ ?˜ì´ì§€ë¥??? œ?˜ì‹œê² ìŠµ?ˆê¹Œ?")) {
+      const updatedPages = pagesRef.current.filter((_, index) => index !== currentPageIndex);
+      await changePage(currentPageIndex >= updatedPages.length ? updatedPages.length - 1 : currentPageIndex, updatedPages);
+    }
+  };
+
+  return { pages, setPages, currentPageIndex, setCurrentPageIndex, changePage, nextPage, prevPage, deletePage };
+};
+
+
+====== W:\work\layboad\layboad\src\hooks\usePerfectFreehand.ts ======
+
+import { useEffect, useRef } from "react";
+import * as fabric from "fabric";
+import { getStroke } from "perfect-freehand";
+
+export type PenStyle = "ballpoint" | "fountain" | "brush";
+
+const PEN_STYLES = {
+  ballpoint: { thinning: 0, smoothing: 0.3, streamline: 0.5 },
+  fountain: { thinning: 0.7, smoothing: 0.5, streamline: 0.5 },
+  brush: { thinning: 0.9, smoothing: 0.8, streamline: 0.8 },
+};
+
+export interface BrushConfig {
+  tool: "pen" | "highlighter" | "eraser";
+  color: string;
+  size: number;
+  penStyle?: PenStyle;
+}
+
+const getSvgPathFromStroke = (stroke: number[][]) => {
+  if (!stroke.length) return "";
+  const d = stroke.reduce(
+    (acc, [x0, y0], i, arr) => {
+      const [x1, y1] = arr[(i + 1) % arr.length];
+      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+      return acc;
+    },
+    ["M", ...stroke[0], "Q"]
+  );
+  d.push("Z");
+  return d.join(" ");
+};
+
+// ??isActive ë§¤ê°œë³€?˜ê? ì¶”ê??˜ì—ˆ?µë‹ˆ??
+export const usePerfectFreehand = (canvas: fabric.Canvas | null, config: BrushConfig, isActive: boolean) => {
+  const isDrawing = useRef(false);
+  const points = useRef<number[][]>([]);
+  const currentPath = useRef<fabric.Path | null>(null);
+
+  useEffect(() => {
+    // ?›‘ [?µì‹¬ ë²„ê·¸ ?˜ì •]: ì§€?°ê°œ ëª¨ë“œ(!isActive)???ŒëŠ” ì¦‰ì‹œ ì¢…ë£Œ?˜ì—¬ ???´ë²¤?¸ê? ê²¹ì¹˜ì§€ ?Šê²Œ ?„ë²½ ì°¨ë‹¨!
+    if (!canvas || !isActive) {
+      if (canvas) canvas.isDrawingMode = false;
+      return;
+    }
+
+    canvas.isDrawingMode = false;
+    canvas.selection = false;
+
+    const opacity = config.tool === "highlighter" ? 0.4 : 1.0;
+
+    const handleMouseDown = (options: fabric.TPointerEventInfo) => {
+      isDrawing.current = true;
+      const pointer = options.scenePoint;
+      if (!pointer) return;
+
+      points.current = [[pointer.x, pointer.y, (options.e as any).pressure || 0.5]];
+
+      currentPath.current = new fabric.Path("M 0 0", {
+        fill: config.color,
+        opacity: opacity,
+        strokeWidth: 0,
+        selectable: false,
+        evented: false,
+      });
+      canvas.add(currentPath.current);
+    };
+
+    const handleMouseMove = (options: fabric.TPointerEventInfo) => {
+      if (!isDrawing.current || !currentPath.current) return;
+
+      const pointer = options.scenePoint;
+      if (!pointer) return;
+
+      points.current.push([pointer.x, pointer.y, (options.e as any).pressure || 0.5]);
+
+      let strokeOptions;
+      if (config.tool === "pen") {
+        const style = PEN_STYLES[config.penStyle || "fountain"];
+        strokeOptions = { size: config.size, ...style };
+      } else {
+        // ?•ê´‘???„ìš© ?¤ì •
+        strokeOptions = { size: config.size, thinning: -0.2, smoothing: 0.5, streamline: 0.5 };
+      }
+
+      const stroke = getStroke(points.current, strokeOptions);
+      const pathData = getSvgPathFromStroke(stroke);
+
+      canvas.remove(currentPath.current);
+      currentPath.current = new fabric.Path(pathData, {
+        fill: config.color,
+        opacity: opacity,
+        strokeWidth: 0,
+        selectable: false,
+        evented: false,
+      });
+      canvas.add(currentPath.current);
+      canvas.requestRenderAll();
+    };
+
+    const handleMouseUp = () => {
+      if (!isDrawing.current) return;
+      isDrawing.current = false;
+
+      if (currentPath.current) {
+        currentPath.current.setCoords();
+        canvas.fire("path:created", { path: currentPath.current });
+      }
+
+      points.current = [];
+      currentPath.current = null;
+    };
+
+    canvas.on("mouse:down", handleMouseDown);
+    canvas.on("mouse:move", handleMouseMove);
+    canvas.on("mouse:up", handleMouseUp);
+
+    return () => {
+      // ?´ë¦°?? ì§€?°ê°œë¡??„í™˜?˜ê±°???¸ë§ˆ?´íŠ¸???????´ë²¤??ë¦¬ìŠ¤?ˆë? ê¹”ë”?˜ê²Œ ì§€?Œì¤?ˆë‹¤.
+      canvas.off("mouse:down", handleMouseDown);
+      canvas.off("mouse:move", handleMouseMove);
+      canvas.off("mouse:up", handleMouseUp);
+    };
+  }, [canvas, config, isActive]); // ??isActiveë¥??˜ì¡´??ë°°ì—´??ì¶”ê??˜ì—¬ ?íƒœ ë³€ê²???ê¸°ì¡´ ?´ë²¤?¸ë? ë¦¬ì…‹??
+};
+
+
+====== W:\work\layboad\layboad\src\hooks\useShape.ts ======
+
+import { useEffect, useRef } from "react";
+import * as fabric from "fabric";
+
+// ??"line"(ì§ì„ ) ?€?…ì´ ?ˆë¡œ ì¶”ê??˜ì—ˆ?µë‹ˆ??
+export type ShapeType = "rect" | "circle" | "triangle" | "line";
+
+export const useShape = (
+  canvas: fabric.Canvas | null,
+  isActive: boolean,
+  shapeType: ShapeType,
+  color: string,
+  strokeWidth: number,
+  onComplete: () => void
+) => {
+  const isDrawing = useRef(false);
+  const startPoint = useRef<{ x: number; y: number } | null>(null);
+  const currentShape = useRef<fabric.Object | null>(null);
+
+  useEffect(() => {
+    if (!canvas || !isActive) {
+      if (canvas) canvas.defaultCursor = "default";
+      return;
+    }
+
+    canvas.isDrawingMode = false;
+    canvas.selection = false;
+    canvas.defaultCursor = "crosshair";
+
+    const handleMouseDown = (o: fabric.TPointerEventInfo) => {
+      if (o.e instanceof MouseEvent && o.e.button !== 0) return;
+      const pointer = o.scenePoint;
+      if (!pointer) return;
+
+      isDrawing.current = true;
+      startPoint.current = pointer;
+
+      const commonProps = {
+        left: pointer.x,
+        top: pointer.y,
+        fill: "transparent",
+        stroke: color,
+        strokeWidth: strokeWidth,
+        originX: "left" as const, // ???´ë¦­ ì§€???„ë²½ ê³ ì •!
+        originY: "top" as const,
+        selectable: false,
+        evented: false,
+        strokeUniform: true, // ?¬ê¸° ì¡°ì ˆ?´ë„ ??êµµê¸° ? ì?
+      };
+
+      if (shapeType === "rect") {
+        currentShape.current = new fabric.Rect({ ...commonProps, width: 0, height: 0 });
+      } else if (shapeType === "circle") {
+        currentShape.current = new fabric.Circle({ ...commonProps, radius: 0 });
+      } else if (shapeType === "triangle") {
+        currentShape.current = new fabric.Triangle({ ...commonProps, width: 0, height: 0 });
+      } else if (shapeType === "line") {
+        // ì§ì„  ?„ìš© ê°ì²´ ?ì„±
+        currentShape.current = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+          stroke: color,
+          strokeWidth: strokeWidth,
+          selectable: false,
+          evented: false,
+        });
+      }
+
+      if (currentShape.current) {
+        canvas.add(currentShape.current);
+      }
+    };
+
+    const handleMouseMove = (o: fabric.TPointerEventInfo) => {
+      if (!isDrawing.current || !currentShape.current || !startPoint.current) return;
+      const pointer = o.scenePoint;
+      if (!pointer) return;
+
+      const start = startPoint.current;
+
+      if (shapeType === "line") {
+        // ì§ì„ ?€ ë§ˆìš°???¬ì¸?°ì˜ ?ì (x2, y2)ë§?ë³€ê²½í•´ì£¼ë©´ ??
+        (currentShape.current as fabric.Line).set({ x2: pointer.x, y2: pointer.y });
+      } else {
+        const w = Math.abs(pointer.x - start.x);
+        const h = Math.abs(pointer.y - start.y);
+        const left = Math.min(pointer.x, start.x);
+        const top = Math.min(pointer.y, start.y);
+
+        if (shapeType === "rect" || shapeType === "triangle") {
+          currentShape.current.set({ left, top, width: w, height: h });
+        } else if (shapeType === "circle") {
+          currentShape.current.set({ left, top, radius: Math.max(w, h) / 2 });
+        }
+      }
+
+      canvas.requestRenderAll();
+    };
+
+    const handleMouseUp = () => {
+        if (!isDrawing.current) return;
+        isDrawing.current = false;
+  
+        if (currentShape.current) {
+          // ???µì‹¬: ë§ˆìš°?¤ë? ?€ ?œì ??ë§ì¶° ê°ì²´???¤ì œ ?¬ê¸°?€ ì¢Œí‘œë¥?ê°•ì œë¡??ˆë¡œê³ ì¹¨?©ë‹ˆ??
+          currentShape.current.setCoords(); 
+          const bounds = currentShape.current.getBoundingRect();
+          
+          // ?ˆë¡œê³ ì¹¨???¤ì œ ?¬ê¸°ë¥?ê¸°ì??¼ë¡œ 10?½ì? ?´ìƒ ê·¸ë ¸?”ì? ?•ì¸
+          if (bounds.width < 10 && bounds.height < 10) {
+            canvas.remove(currentShape.current);
+          } else {
+            // ?¬ê¸°ê°€ ì¶©ë¶„?˜ë‹¤ë©?? ì??˜ê³  ì¡°ì‘ ê¶Œí•œ ë¶€??
+            currentShape.current.set({ selectable: true, evented: true, hasControls: true });
+            canvas.setActiveObject(currentShape.current);
+            
+            // ?Œì¼“ ?™ê¸°?”ë? ?„í•´ ?„ì‹œ ë°œì†¡
+            canvas.fire("path:created", { path: currentShape.current } as any);
+          }
+        }
+  
+        currentShape.current = null;
+        onComplete(); 
+      };
+
+    canvas.on("mouse:down", handleMouseDown);
+    canvas.on("mouse:move", handleMouseMove);
+    canvas.on("mouse:up", handleMouseUp);
+
+    return () => {
+      canvas.off("mouse:down", handleMouseDown);
+      canvas.off("mouse:move", handleMouseMove);
+      canvas.off("mouse:up", handleMouseUp);
+    };
+  }, [canvas, isActive, shapeType, color, strokeWidth, onComplete]);
+};
+
+
+====== W:\work\layboad\layboad\src\hooks\useSteps.ts ======
+
+// src/hooks/useSteps.ts
+import { useState, useEffect, useRef } from "react";
+import * as fabric from "fabric";
+
+export interface Step {
+  id: string;
+  name: string;
+  isVisible: boolean;
+  opacity?: number; // ???¬ëª…???ì„± ì¶”ê?!
+}
+
+export const useSteps = (canvas: fabric.Canvas | null) => {
+  const [steps, setSteps] = useState<Step[]>([
+    { id: "step-1", name: "Step 1", isVisible: true, opacity: 1 }, // ì´ˆê¸°ê°’ì— opacity: 1 ì¶”ê?
+  ]);
+  const [activeStepId, setActiveStepId] = useState<string>("step-1");
+
+  const activeStepIdRef = useRef(activeStepId);
+  useEffect(() => {
+    activeStepIdRef.current = activeStepId;
+  }, [activeStepId]);
+
+  // ê¼¬ë¦¬???¬ì•„ì£¼ëŠ” ë¡œì§?€ ê·¸ë?ë¡?? ì?
+  useEffect(() => {
+    if (!canvas) return;
+
+    const handlePathCreated = (e: any) => {
+      const path = e.path;
+      if (path) {
+        path.set({
+          stepId: activeStepIdRef.current,
+          originalOpacity: path.opacity || 1.0, 
+        });
+      }
+    };
+
+    canvas.on("path:created", handlePathCreated);
+    return () => { canvas.off("path:created", handlePathCreated); };
+  }, [canvas]);
+
+  /* ?š¨ ê¸°ì¡´???ˆë˜ applyGhostMode ?? œ ?š¨
+    ?´ìœ : ?´ì œ Whiteboard.tsx??[ë§ˆë²•???Œë”ë§??”ì§„]??
+    ? ìƒ?˜ì˜ ?µì œ???°ë¼ ì¤‘ì•™?ì„œ ëª¨ë“  ?¬ëª…?„ë? ê´€ë¦¬í•˜ë¯€ë¡? ?¬ê¸°??ìº”ë²„?¤ë? ê±´ë“œë¦¬ë©´ ê¼¬ì…?ˆë‹¤!
+  */
+
+  const addStep = () => {
+    const newId = `step-${steps.length + 1}`;
+    setSteps((prev) => [...prev, { id: newId, name: `Step ${steps.length + 1}`, isVisible: true, opacity: 1 }]);
+    setActiveStepId(newId);
+  };
+
+  const toggleStepVisibility = (id: string) => {
+    setSteps((prev) => prev.map((step) => (step.id === id ? { ...step, isVisible: !step.isVisible } : step)));
+  };
+
+  // ???¬ë¼?´ë”ë¥??€ì§ì¼ ???¨ê³„ë³??¬ëª…?„ë? ì¡°ì ˆ?˜ëŠ” ?ˆë¡œ???¨ìˆ˜!
+  const updateStepOpacity = (id: string, opacity: number) => {
+    setSteps((prev) => prev.map((step) => (step.id === id ? { ...step, opacity } : step)));
+  };
+
+  return { steps, setSteps, activeStepId, setActiveStepId, addStep, toggleStepVisibility, updateStepOpacity };
+};
+
+
+====== W:\work\layboad\layboad\src\lib\api\auth.ts ======
+
+// src/lib/api/auth.ts
+import { supabase } from "../supabase";
+
+// 1. ?´ë©”???Œì›ê°€??
+export const signUpWithEmail = async (email: string, password: string) => {
+  const cleanEmail = email.trim();
+  const { data, error } = await supabase.auth.signUp({
+    email: cleanEmail,
+    password,
+  });
+  if (error) throw error;
+  return data;
+};
+
+// 2. ?´ë©”??ë¡œê·¸??
+export const signInWithEmail = async (email: string, password: string) => {
+  const cleanEmail = email.trim();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: cleanEmail,
+    password,
+  });
+  if (error) throw error;
+  return data;
+};
+
+// 3. ?Œì…œ ë¡œê·¸??(êµ¬ê?, ì¹´ì¹´??
+export const signInWithSocial = async (provider: "google" | "kakao") => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      // ë¡œê·¸???±ê³µ ???Œì•„???€?œë³´?œë¡œ ?©ì¹˜(?)?˜ëŠ” ë§ˆë²•???µì…˜
+      redirectTo: `${window.location.origin}/dashboard`,
+    },
+  });
+  if (error) throw error;
+  return data;
+};
+
+// 4. ë¡œê·¸?„ì›ƒ
+export const signOut = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+};
+
+// 5. ?„ì¬ ë¡œê·¸?¸í•œ ? ì? ?•ë³´ ê°€?¸ì˜¤ê¸?(?€?œë³´???±ì—???¬ìš©)
+export const getCurrentUser = async () => {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) return null;
+  return user;
+};
+
+
+====== W:\work\layboad\layboad\src\lib\api\board.ts ======
+
+// src/lib/api/board.ts
+import { supabase } from "../supabase";
+
+// ?§  6?ë¦¬ ë°?ì½”ë“œë¥?ê¸?UUIDë¡?ë³€?˜í•´?ëŠ” ?„ì‹œ ê¸°ì–µ?¥ì¹˜ (DB ê³¼ë???ë°©ì???
+const roomIdCache: Record<string, string> = {};
+
+// ?‘‰ ë°?ì½”ë“œ("IE96QA")ë¥??£ìœ¼ë©?ì§„ì§œ UUID("123e-...")ë¡?ë°”ê¿”ì£¼ëŠ” ?µì—­ ?¨ìˆ˜
+const getInternalRoomId = async (roomCode: string) => {
+  // ?´ë? ê¸°ì–µ?˜ê³  ?ˆëŠ” UUIDë©?DB ì¡°íšŒ ?†ì´ ë°”ë¡œ ë°˜í™˜ (?ë™?€????ì´ˆê³ ??ì²˜ë¦¬)
+  if (roomIdCache[roomCode]) return roomIdCache[roomCode];
+
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("id")
+    .eq("code", roomCode)
+    .single();
+
+  if (error) {
+    console.error("ë°?UUID ì¡°íšŒ ?ëŸ¬:", error);
+    throw error;
+  }
+  
+  // ì°¾ì? UUIDë¥??¤ìŒ???„í•´ ë©”ëª¨ë¦¬ì— ?€??
+  roomIdCache[roomCode] = data.id;
+  return data.id;
+};
+
+// ---------------------------------------------------------
+
+// 1. ë°©ì˜ ?„ì²´ ?˜ì´ì§€ ?°ì´??ë¶ˆëŸ¬?¤ê¸° (ì§€ê°ìƒ ?…ì¥ ???¬ìš©)
+export const getRoomPages = async (roomCode: string) => {
+  // ?ŒŸ ì§§ì? ì½”ë“œ("IE96QA")ë¥?ê¸?UUIDë¡?ë³€??
+  const internalId = await getInternalRoomId(roomCode);
+
+  const { data, error } = await supabase
+    .from("room_pages")
+    .select("page_index, background, steps, canvas_json")
+    .eq("room_id", internalId) // ?ŒŸ ë³€?˜ëœ UUIDë¡?ê²€??
+    .order("page_index", { ascending: true });
+
+  if (error) {
+    console.error("?˜ì´ì§€ ë¡œë”© ?ëŸ¬:", error);
+    throw error;
+  }
+  
+  return data;
+};
+
+// 2. ? ìƒ?˜ì´ ?„ê¸°???˜ì´ì§€ ?°ì´???€?¥í•˜ê¸?(?˜ì‹œë¡?ë°±ì—…)
+export const saveRoomPages = async (roomCode: string, pages: any[]) => {
+  // ?ŒŸ ì§§ì? ì½”ë“œ("IE96QA")ë¥?ê¸?UUIDë¡?ë³€??
+  const internalId = await getInternalRoomId(roomCode);
+
+  // DB???£ê¸° ì¢‹ê²Œ ?°ì´?°ë? ë°°ì—´ ?•íƒœë¡?ê°€ê³?
+  const upsertData = pages.map((page, index) => ({
+    room_id: internalId, // ?ŒŸ ë³€?˜ëœ UUIDë¡??€??
+    page_index: index,
+    background: page.background || {},
+    steps: page.steps || [],
+    canvas_json: page.json || {},
+    updated_at: new Date().toISOString(),
+  }));
+
+  const { error } = await supabase
+    .from("room_pages")
+    .upsert(upsertData, {
+      onConflict: "room_id, page_index", // ê°™ì? ë°? ê°™ì? ?˜ì´ì§€ ë²ˆí˜¸ë©???–´?°ê¸°!
+    });
+
+  if (error) {
+    console.error("?˜ì´ì§€ ë°±ì—… ?ëŸ¬:", error);
+    throw error;
+  }
+};
+
+
+====== W:\work\layboad\layboad\src\lib\api\rooms.ts ======
+
+// src/lib/api/rooms.ts
+import { supabase } from "../supabase";
+
+/**
+ * 1. ?ˆë¡œ??êµì‹¤(ë°? ?ì„±?˜ê¸°
+ * ??ë³€ê²½ì : ?Œë¼ë¯¸í„°ë¡???ë°›ê³ , ?¬ê¸°??ì§ì ‘ ë¡œê·¸??? ì?ë¥??•ì¸?©ë‹ˆ??
+ */
+export const createRoom = async (teacherId: string) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("ë¡œê·¸???¸ì…˜??ë§Œë£Œ?˜ì—ˆ?µë‹ˆ??");
+
+  const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  const { data, error } = await supabase
+    .from("rooms")
+    .insert([
+      {
+        code: roomCode,
+        teacher_id: user.id, // ???ìŠ¤?¸ê? ?„ë‹Œ, ì§„ì§œ ë¡œê·¸?¸ëœ ?”ì???ID ?¬ìš©
+        is_active: true,
+      }
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    // ?ëŸ¬ ê°ì²´ë¥?ë¬¸ì?´ë¡œ ?€?´ì„œ ì§„ì§œ ?ì¸??ë³´ì—¬ì£¼ë„ë¡??˜ì •
+    console.error("?š¨ ë°??ì„± ?¤ë¥˜:", JSON.stringify(error, null, 2));
+    throw error;
+  }
+  
+  return data;
+};
+
+/**
+ * 2. ? ìƒ?˜ì˜ ë°?ëª©ë¡ ë¶ˆëŸ¬?¤ê¸° (?€?œë³´?œìš©)
+ * ??ë³€ê²½ì : ?¬ê¸°???Œë¼ë¯¸í„° ?€??ì§ì ‘ ë¡œê·¸??? ì?ë¥??•ì¸?©ë‹ˆ??
+ */
+export const getTeacherRooms = async (teacherId: string) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("ë¡œê·¸???¸ì…˜??ë§Œë£Œ?˜ì—ˆ?µë‹ˆ??");
+
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("*")
+    .eq("teacher_id", user.id) // ??ì§„ì§œ IDë¡œë§Œ ê²€??
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("?š¨ ë°?ëª©ë¡ ë¡œë”© ?¤ë¥˜:", JSON.stringify(error, null, 2));
+    throw error;
+  }
+  
+  return data;
+};
+
+/**
+ * 3. ?™ìƒ???…ë ¥??ë°?ì½”ë“œê°€ ? íš¨?œì? ê²€??(?€ê¸°ì‹¤ ?…ì¥??
+ * ??ë³€ê²½ì : ???¨ìˆ˜???™ìƒ(ë¹„ë¡œê·¸ì¸)???¨ì•¼ ?˜ë?ë¡??Œë¼ë¯¸í„°ë¥?ë°›ëŠ” ?ë˜ ë°©ì‹??ë§ìŠµ?ˆë‹¤.
+ */
+export const verifyRoomCode = async (code: string) => {
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("id, code, is_active")
+    .eq("code", code)
+    .eq("is_active", true) 
+    .maybeSingle();
+
+  if (error) {
+    console.error("ë°?ì½”ë“œ ê²€ì¦?ì¤??¤ë¥˜ ë°œìƒ:", error);
+    return null;
+  }
+  
+  return data;
+};
+
+export const deleteRoom = async (roomId: string) => {
+  const { error } = await supabase
+    .from("rooms")
+    .delete()
+    .eq("id", roomId);
+
+  if (error) {
+    console.error("êµì‹¤ ?? œ ?ëŸ¬:", error);
+    throw error;
+  }
+};
+
+
+====== W:\work\layboad\layboad\src\lib\storage.ts ======
+
+// src/lib/storage.ts
+import { supabase } from "./supabase";
+
+export const uploadFileToCloud = async (file: File): Promise<string> => {
+  try {
+    // 1. ?Œì¼ëª?ì¤‘ë³µ ë°©ì?ë¥??„í•œ ê³ ìœ  ?´ë¦„ ?ì„± (?„ì¬?œê°„_?œë¤ë¬¸ì???•ì¥??
+    const fileExt = file.name.split('.').pop();
+    const uniqueFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+    
+    // ?´ë” ?•ë¦¬ë¥??„í•´ uploads/ ê²½ë¡œ ?ˆì— ?€?¥í•©?ˆë‹¤.
+    const filePath = `uploads/${uniqueFileName}`;
+
+    // 2. Supabase 'backgrounds' ë²„í‚·???Œì¼ ì§„ì§œë¡??…ë¡œ??
+    const { error: uploadError } = await supabase.storage
+      .from("backgrounds")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false, // ??–´?°ê¸° ë°©ì?
+      });
+
+    if (uploadError) {
+      console.error("Supabase ?…ë¡œ???ëŸ¬:", uploadError);
+      throw new Error("?Œì¼ ?…ë¡œ?œì— ?¤íŒ¨?ˆìŠµ?ˆë‹¤.");
+    }
+
+    // 3. ?…ë¡œ?œëœ ?Œì¼???„êµ¬???‘ê·¼ ê°€?¥í•œ Public URL ê°€?¸ì˜¤ê¸?
+    const { data } = supabase.storage
+      .from("backgrounds")
+      .getPublicUrl(filePath);
+
+    console.log("?ï¸ ?´ë¼?°ë“œ ?…ë¡œ???„ë£Œ! URL:", data.publicUrl);
+    return data.publicUrl;
+    
+  } catch (error) {
+    console.error("?´ë¼?°ë“œ ?…ë¡œ??ì¤??¤ë¥˜ ë°œìƒ:", error);
+    throw error;
+  }
+};
+
+
+====== W:\work\layboad\layboad\src\lib\supabase.ts ======
+
+// src/lib/supabase.ts
+import { createClient } from "@supabase/supabase-js";
+
+// 1. .env.local ?Œì¼???ì–´???”í˜¸(??ë¥?ë¶ˆëŸ¬?µë‹ˆ??
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+// 2. ?¤ê? ?†ì„ ê²½ìš°ë¥??€ë¹„í•œ ?ˆì „ ?¥ì¹˜ (?”ë²„ê¹…ìš©)
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("?š¨ Supabase ?˜ê²½ ë³€?˜ê? ?¤ì •?˜ì? ?Šì•˜?µë‹ˆ?? .env.local ?Œì¼???•ì¸?˜ê³  ?œë²„ë¥??¬ì‹œ?‘í•´ì£¼ì„¸??");
+}
+
+// 3. Supabase ?´ë¼?´ì–¸?¸ë? ?ì„±?˜ì—¬ ?¸ë?ë¡??´ë³´?…ë‹ˆ??
+// ?´ì œ ?¤ë¥¸ ?Œì¼?ì„œ import { supabase } from '@/lib/supabase' ??ì¤„ë§Œ ?°ë©´ DB?€ ë°”ë¡œ ?µì‹ ?©ë‹ˆ??
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+
+====== W:\work\layboad\layboad\src\types\board.ts ======
+
+export interface RoomState {
+    isClassMode: boolean;          // ?˜ì—… ëª¨ë“œ ì¼œì§ ?¬ë? (?™ìƒ???”ë©´ ê°•ì œ ê³ ì •)
+    currentPageIndex: number;      // ?„ì¬ ?˜ì´ì§€ ë²ˆí˜¸
+    studentVisibilities: Record<string, { isVisible: boolean; opacity: number }>; // ?™ìƒë³??„ê¸° ?µì œ
+  }
+  
+  // 2. ê°??˜ì´ì§€???íƒœ
+  export interface PageState {
+    background: {
+      type: "pdf" | "image" | "none";
+      url: string | null;          // ?˜ì¤‘???´ë¼?°ë“œ URL???¤ì–´ê°??ë¦¬
+      opacity: number;             // ë°°ê²½ ?¬ëª…??(0.1 ~ 1.0)
+    };
+    steps: StepState[];            // ê·¸ë£¹(?ˆì´?? ëª©ë¡
+    activeStepId: string;          // ?„ì¬ ? íƒ??ê·¸ë£¹
+    canvasJson: any;               // ?„ê¸° ?°ì´??(ê°€ë²¼ì?)
+  }
+  
+  // 3. ê·¸ë£¹(?ˆì´?? ?íƒœ
+  export interface StepState {
+    id: string;
+    name: string;
+    isVisible: boolean;
+    opacity: number;               // ?ˆì´???¬ëª…??
+  }
+  
+  // 4. ?™ê¸°?”ìš© ?„ì²´ ?¤ëƒ…??
+  export interface SyncSnapshot {
+    roomState: RoomState;
+    pages: PageState[];
+  }
