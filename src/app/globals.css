@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* 라이트 모드 전용 — OS 다크모드에서 밝은 배경(bg-gray-50/white) 위에 흰 글씨가 겹쳐
+   입력 글자가 흐릿하게 보이던 문제 방지 (앱 전체가 라이트 디자인이라 다크 오버라이드 제거) */
+body {
+  background: #ffffff;
+  color: #171717;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ============================================================
+   🍃 Glass Green — layboad 디자인 규칙 (토큰 + 컴포넌트 클래스, 자동 적용용)
+   버튼:  .gg-btn  (+종류 --primary/--glass/--ghost) (+크기 --sm/--lg/--block) (+큰버튼 물방울 --drop)
+   유리:  .gg-glass  (+--tint 초록빛)
+   배경:  .gg-page  + <LeafBackground/>
+   ============================================================ */
+
+/* 잎사귀 초록 팔레트 → Tailwind 유틸(bg-leaf-400, text-leaf-700 …)로도 사용 가능 */
+@theme {
+  --color-leaf-50:  #F1F8E8;
+  --color-leaf-100: #DCEFBF;
+  --color-leaf-200: #BFE08C;
+  --color-leaf-300: #9DCB5C;
+  --color-leaf-400: #77B034;  /* 기본 잎색 */
+  --color-leaf-500: #5D9226;
+  --color-leaf-600: #457014;
+  --color-leaf-700: #33540F;
+  --color-leaf-800: #21380A;
+}
+
+:root {
+  --gg-page:       #F3F8EC;              /* 아주 옅은 잎빛 바탕 */
+  --gg-glass:      rgba(255,255,255,0.55);
+  --gg-glass-tint: rgba(151,203,92,0.16);/* 초록빛 유리 */
+  --gg-glass-brd:  rgba(51,84,15,0.16);
+  --gg-blur:       14px;
+
+  --gg-r-drop: 999px;                    /* 물방울 = 완전 pill */
+  --gg-r-card: 22px;
+  --gg-r-blob: 46% 54% 57% 43% / 52% 48% 52% 48%;  /* 자연스러운 방울 blob */
+
+  --gg-glow:       0 8px 22px rgba(51,84,15,0.16); /* 초록 글로우(떠있는/촉촉) */
+  --gg-glow-press: 0 3px 10px rgba(51,84,15,0.22);
+
+  --gg-drop-min: 44px;                   /* 이 높이 이상 버튼만 물방울 터짐 */
+  --gg-ease: cubic-bezier(.2,.8,.3,1);
+}
+
+/* 단일 스위치: <GlassGreen/>가 <html>에 .gg-theme 부여 → 이 한 줄 제거하면 배경/장식 전부 사라짐 */
+.gg-theme body { background: var(--gg-page); }
+
+/* 유리 표면 (카드/패널/툴바) — 전부 .gg-theme 아래 → 스위치 하나로 켜지고 사라짐 */
+.gg-theme .gg-glass {
+  background: var(--gg-glass);
+  border: 1px solid var(--gg-glass-brd);
+  border-radius: var(--gg-r-card);
+  backdrop-filter: blur(var(--gg-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--gg-blur)) saturate(1.35);
+  box-shadow: var(--gg-glow), inset 0 1px 0 rgba(255,255,255,0.65);
+}
+.gg-theme .gg-glass--tint { background: var(--gg-glass-tint); }
+
+/* 물방울 버튼 (base) */
+.gg-theme .gg-btn {
+  position: relative; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid transparent; border-radius: var(--gg-r-drop);
+  padding: 12px 22px; font-weight: 500; font-size: 15px; line-height: 1;
+  cursor: pointer; user-select: none;
+  transition: transform .18s var(--gg-ease), box-shadow .18s, filter .18s;
+}
+/* 윗면 물빛 하이라이트(젖은 유리 느낌) */
+.gg-theme .gg-btn::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 48%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.gg-theme .gg-btn:hover  { transform: translateY(-1px); box-shadow: var(--gg-glow); filter: brightness(1.04); }
+.gg-theme .gg-btn:active { transform: translateY(0) scale(.98); box-shadow: var(--gg-glow-press); }
+.gg-theme .gg-btn:focus-visible { outline: 3px solid rgba(119,176,52,.45); outline-offset: 2px; }
+
+/* 종류 */
+.gg-theme .gg-btn--primary { background: var(--color-leaf-400); color: #fff; box-shadow: var(--gg-glow); }
+.gg-theme .gg-btn--glass   { background: var(--gg-glass); color: var(--color-leaf-700); border-color: var(--gg-glass-brd);
+                   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.gg-theme .gg-btn--ghost   { background: rgba(119,176,52,.12); color: var(--color-leaf-700); }
+
+/* 크기 */
+.gg-theme .gg-btn--sm    { padding: 8px 16px;  font-size: 13px; }
+.gg-theme .gg-btn--lg    { padding: 15px 28px; font-size: 16px; }
+.gg-theme .gg-btn--block { width: 100%; }
+
+/* 물방울 터짐 — .gg-drop 붙은 '큰 버튼'만. JS가 클릭 좌표에 .gg-ripple 삽입 */
+.gg-ripple {
+  position: absolute; border-radius: 50%; width: 12px; height: 12px;
+  transform: translate(-50%, -50%) scale(0); pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,.75), rgba(255,255,255,0) 65%);
+  animation: gg-burst .55s ease-out forwards;
+}
+@keyframes gg-burst { to { transform: translate(-50%, -50%) scale(16); opacity: 0; } }
+
+/* 🍃 전역 장식(잎 + 물방울) — 위치·크기·낙하가 전부 여기 규칙에 저장됨.
+   <GlassGreen/>는 <i> 노드 9개만 순서대로 뿌리고, 실제 배치/크기/낙하는 아래 nth-child가 결정.
+   (노드 순서 = leaf, dew, leaf, dew, leaf, dew, leaf, dew, leaf) */
+.gg-decor { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.gg-decor > i { position: absolute; top: -180px; display: block; will-change: transform; }
+
+.gg-leaf {
+  width: 110px; height: 110px; opacity: .34;
+  background: no-repeat center/contain;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2C18 6 18.5 15 12 22C5.5 15 6 6 12 2Z' fill='%239DCB5C'/></svg>");
+  animation: gg-fall 16s linear infinite;
+}
+.gg-dew {
+  width: 26px; height: 30px; opacity: .5;
+  background: radial-gradient(circle at 40% 32%, rgba(255,255,255,.75), rgba(119,176,52,.42) 55%, rgba(69,112,20,.32));
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  animation: gg-drip 10s linear infinite;
+}
+
+.gg-decor > i:nth-child(1) { left: 5%;  width: 142px; animation-duration: 18s; animation-delay: -3s; }
+.gg-decor > i:nth-child(2) { left: 16%; animation-duration: 9s;  animation-delay: -2s; }
+.gg-decor > i:nth-child(3) { left: 30%; width: 82px;  animation-duration: 14s; animation-delay: -9s; opacity: .28; }
+.gg-decor > i:nth-child(4) { left: 44%; animation-duration: 11s; animation-delay: -6s; }
+.gg-decor > i:nth-child(5) { left: 57%; width: 120px; animation-duration: 21s; animation-delay: -1s; }
+.gg-decor > i:nth-child(6) { left: 66%; animation-duration: 8s;  animation-delay: -4s; }
+.gg-decor > i:nth-child(7) { left: 80%; width: 96px;  animation-duration: 16s; animation-delay: -12s; opacity: .3; }
+.gg-decor > i:nth-child(8) { left: 90%; animation-duration: 10s; animation-delay: -8s; }
+.gg-decor > i:nth-child(9) { left: 72%; width: 60px;  animation-duration: 13s; animation-delay: -15s; opacity: .24; }
+
+@keyframes gg-fall { 0% { transform: translateY(-180px) rotate(-8deg); } 100% { transform: translateY(116vh) rotate(200deg); } }
+@keyframes gg-drip { 0% { transform: translateY(-60px); }              100% { transform: translateY(116vh); } }
